@@ -113,15 +113,24 @@ docker exec -d -u broker \
   -e $'ANTHROPIC_API_KEY=  sk-ant-oat01-SECRET-subscription \n' \
   -e ANTHROPIC_UPSTREAM=http://127.0.0.1:9999/anthropic-sub \
   "$NAME" sh -c 'exec node /opt/gateway/server.js > /tmp/gw-sub.log 2>&1'
-for _ in $(seq 1 20); do docker exec "$NAME" curl -sf -o /dev/null http://127.0.0.1:9787/_routes && break; sleep 0.5; done
-docker exec "$NAME" curl -s -o /dev/null -X POST -H 'x-api-key: placeholder' -H 'anthropic-beta: claude-code-20250219' \
-  -d '{}' http://127.0.0.1:9787/anthropic/v1/messages
+# Third gateway: an API key put into CLAUDE_CODE_OAUTH_TOKEN (the template's only Claude field).
+docker exec -d -u broker \
+  -e PORT=9081 -e GATEWAY_LOCAL_PORT=9788 -e ANTHROPIC_API_KEY= \
+  -e CLAUDE_CODE_OAUTH_TOKEN=sk-ant-api03-SECRET-apikey \
+  -e ANTHROPIC_UPSTREAM=http://127.0.0.1:9999/anthropic-key \
+  "$NAME" sh -c 'exec node /opt/gateway/server.js > /tmp/gw-key.log 2>&1'
+for port in 9787 9788; do
+  for _ in $(seq 1 20); do docker exec "$NAME" curl -sf -o /dev/null "http://127.0.0.1:$port/_routes" && break; sleep 0.5; done
+  docker exec "$NAME" curl -s -o /dev/null -X POST -H 'authorization: Bearer placeholder' -H 'anthropic-beta: claude-code-20250219' \
+    -d '{}' "http://127.0.0.1:$port/anthropic/v1/messages"
+done
 docker exec "$NAME" curl -s -o /dev/null http://127.0.0.1:9787/anthropic/force-401
 sleep 1
 docker exec "$NAME" node -e '
 const fs = require("fs");
 const lines = fs.readFileSync("/root/mock-requests.jsonl", "utf8").trim().split("\n").map(JSON.parse);
 const log = fs.readFileSync("/tmp/gw-sub.log", "utf8");
+const keyLog = fs.readFileSync("/tmp/gw-key.log", "utf8");
 let failed = false;
 const check = (ok, name) => { console.log((ok ? "PASS " : "FAIL ") + name); if (!ok) failed = true; };
 const sub = lines.filter((l) => l.path === "/anthropic-sub/v1/messages");
@@ -131,7 +140,11 @@ check(sub.length === 1 && /claude-code-20250219/.test(sub[0]["anthropic-beta"]) 
   "oauth beta added, existing betas kept");
 check(log.includes("using it as CLAUDE_CODE_OAUTH_TOKEN"), "token in the wrong variable is detected");
 check(/anthropic: answered 401 \(authentication_error: invalid bearer token\)/.test(log), "rejected token is explained in the logs");
-check(!log.includes("SECRET"), "gateway logs contain no secret");
+const key = lines.filter((l) => l.path === "/anthropic-key/v1/messages");
+check(key.length === 1 && key[0]["x-api-key"] === "sk-ant-api03-SECRET-apikey" && !key[0].authorization && !/oauth/.test(key[0]["anthropic-beta"]),
+  "API key in CLAUDE_CODE_OAUTH_TOKEN sent as x-api-key");
+check(keyLog.includes("using it as ANTHROPIC_API_KEY"), "API key in the subscription variable is detected");
+check(!log.includes("SECRET") && !keyLog.includes("SECRET"), "gateway logs contain no secret");
 process.exit(failed ? 1 : 0);
 '
 if docker logs "$NAME" 2>&1 | grep -q SECRET; then echo "FAIL container logs contain no secret"; exit 1; fi

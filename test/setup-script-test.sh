@@ -21,12 +21,18 @@ require("http").createServer((req, res) => {
   if (req.url === "/healthz") return send(200, "ok");
   if (req.url === "/user") return req.headers.authorization === "Bearer ghp_TESTSECRET" ? send(200, { login: "tester" }) : send(401, {});
   if (req.url === "/v1/models") return req.headers["x-api-key"] === "sk-ant-api03-TESTSECRET" ? send(200, { data: [] }) : send(401, {});
+  // Fake container registry: octo/demo is public, everything else is private.
+  if (req.url.startsWith("/token?")) return req.url.includes("repository:octo/demo:pull") ? send(200, { token: "anon" }) : send(403, { errors: [{ code: "DENIED" }] });
+  if (req.url === "/v2/octo/demo/manifests/latest") return req.headers.authorization === "Bearer anon" ? send(200, {}) : send(401, {});
   send(404, {});
 }).listen(Number(process.argv[1]), "127.0.0.1");
 ' "$PORT" &
 MOCK_PID=$!
 trap 'kill $MOCK_PID 2>/dev/null || true' EXIT
 for _ in $(seq 1 50); do curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null && break; sleep 0.1; done
+
+# No git identity, so prompts look the same on every machine.
+: >"$WORK/empty-gitconfig"
 
 # A fake `claude` that "creates" a subscription token.
 mkdir -p "$WORK/bin"
@@ -40,6 +46,7 @@ run_setup() { # STATE_DIR [env assignments...] -- [script args]
     RAILWAY_BIN="$ROOT/test/fake-railway" FAKE_STATE="$state" FAKE_URL="http://127.0.0.1:$PORT" \
     SETUP_GITHUB_API="http://127.0.0.1:$PORT" SETUP_ANTHROPIC_API="http://127.0.0.1:$PORT" \
     SETUP_REPO=octo/demo SETUP_BRANCH=main SETUP_WAIT_SECONDS=20 PATH="$WORK/bin:$PATH" \
+    GIT_CONFIG_GLOBAL="$WORK/empty-gitconfig" GIT_CONFIG_NOSYSTEM=1 \
     "$@")
 }
 var() { cat "$1/vars/$2" 2>/dev/null || true; }
@@ -98,8 +105,8 @@ answers = [  # (prompt text to wait for, what to type)
     ("Run `claude setup-token` now?", "y"),
     ("Paste the subscription token (hidden)", "  sk-ant-oat01-PTYSECRET  "),
     ("Paste the GitHub token (hidden, empty = skip)", "ghp_TESTSECRET"),
-    ("Name [", "Pty User"),
-    ("Email [", "pty@example.com"),
+    ("Name: ", "Pty User"),  # no default: the test hides this machine's git config
+    ("Email: ", "pty@example.com"),
     ("Apply now? [Y/n]", ""),
 ]
 pid, fd = pty.fork()
@@ -141,6 +148,37 @@ check "GitHub token checked and saved"  '[[ "$out4" == *"@tester"* ]] && [ "$(va
 check "typed git author saved"          '[ "$(var "$S4" GIT_USER_NAME)" = "Pty User" ]'
 check "pasted tokens not echoed"        '[[ "$out4" != *"ghp_TESTSECRET"* ]]'
 check "deploy started and up"           '[ -e "$S4/deployed" ] && [[ "$out4" == *"it'"'"'s up"* ]]'
+
+run_template() { # STATE_DIR [env assignments...]
+  local state=$1; shift
+  (cd "$WORK" && env -u GITHUB_TOKEN RAILWAY_BIN="$ROOT/test/fake-railway" FAKE_STATE="$state" \
+    FAKE_URL="https://claude-code-production.up.railway.app" SETUP_REGISTRY_URL="http://127.0.0.1:$PORT" \
+    "$@" "$ROOT/scripts/create-railway-template.sh" --yes 2>&1)
+}
+
+echo "== 5. Create a one-click template from the public image"
+S5="$WORK/state5"
+out5="$(run_template "$S5" SETUP_IMAGE=ghcr.io/octo/demo:latest)" && pass "script finished" || { fail "script finished"; echo "$out5"; }
+check "nicely named project"            'grep -qx "project=Claude Code Dev Box" "$S5/template"'
+check "template runs the image"         'grep -qx "source=image:ghcr.io/octo/demo:latest" "$S5/template"'
+check "template has the volume"         'grep -qx "volume=/home/dev" "$S5/template"'
+check "template has a domain on 8080"   'grep -qx "domain=port=8080" "$S5/template"'
+check "token fields are empty"          '[ "$(grep -c "^var .*=$" "$S5/template")" -eq 5 ] && grep -qx "var CLAUDE_CODE_OAUTH_TOKEN=" "$S5/template"'
+check "TEMPLATE.md passes publish rules" '[ -e "$S5/published" ]'
+check "throwaway project deleted by ID" '[ -e "$S5/project_deleted" ] && grep -q -- "--project proj-123" "$S5/argv.log"'
+check "deploy link and button printed"  '[[ "$out5" == *"https://railway.com/deploy/abc123"* && "$out5" == *"railway.com/button.svg"* ]]'
+
+echo "== 6. Private image: stops before creating anything"
+S6="$WORK/state6"
+if out6="$(run_template "$S6" SETUP_IMAGE=ghcr.io/octo/private:latest)"; then fail "script stopped"; else pass "script stopped"; fi
+check "explains how to make it public"  '[[ "$out6" == *"Change visibility"* ]]'
+check "nothing created on Railway"      '! grep -q "^init" "$S6/argv.log" 2>/dev/null'
+
+echo "== 7. Several Railway workspaces"
+S7="$WORK/state7"
+out7="$(run_template "$S7" SETUP_IMAGE=ghcr.io/octo/demo:latest FAKE_MULTI_WORKSPACE=1 SETUP_WORKSPACE=team)" \
+  && pass "script finished" || { fail "script finished"; echo "$out7"; }
+check "project created in that workspace" '[ "$(cat "$S7/workspace")" = team ]'
 
 if ((FAILED)); then echo "Some checks failed."; exit 1; fi
 echo "All setup script checks passed."

@@ -41,7 +41,13 @@ case "$cmd" in
   status) linked; echo "Project: $(cat "$FAKE_STATE/linked")" ;;
   init)
     parse "--name --workspace" "--json" "$@"; need --name; ((${#POS[@]} == 0)) || fail_args "init takes no positionals"
-    echo "${FLAG[--name]}" >"$FAKE_STATE/linked"; echo "Created project ${FLAG[--name]}" ;;
+    if [[ -n "${FAKE_MULTI_WORKSPACE:-}" && -z "${FLAG[--workspace]:-}" && ! -t 1 ]]; then
+      echo "--workspace required in non-interactive mode (multiple workspaces available)" >&2; exit 1
+    fi
+    echo "${FLAG[--name]}" >"$FAKE_STATE/linked"; echo proj-123 >"$FAKE_STATE/project_id"
+    echo "${FLAG[--workspace]:-default}" >"$FAKE_STATE/workspace"
+    if [[ -n "${FLAG[--json]:-}" ]]; then printf '{"id":"proj-123","name":"%s"}\n' "${FLAG[--name]}"
+    else echo "Created project ${FLAG[--name]}"; fi ;;
   add)
     linked; parse "--service" "--json" "$@"; need --service --json
     touch "$FAKE_STATE/service_${FLAG[--service]}"; echo "${FLAG[--service]}" >"$FAKE_STATE/linked_service"
@@ -55,23 +61,38 @@ case "$cmd" in
         service_exists "${POS[0]}"; echo "${POS[0]}" >"$FAKE_STATE/linked_service"; echo "Linked service ${POS[0]}" ;;
       source)
         [[ "${1:-}" == connect ]] || fail_args "service source $*"; shift
-        linked; parse "--repo --branch --service" "--json" "$@"; need --repo --service
+        linked; parse "--repo --branch --image --service" "--json" "$@"; need --service
         service_exists "${FLAG[--service]}"
-        echo "${FLAG[--repo]}@${FLAG[--branch]:-default}" >"$FAKE_STATE/source"
-        printf '{"id":"svc-123","name":"%s","repo":"%s","branch":"%s"}\n' "${FLAG[--service]}" "${FLAG[--repo]}" "${FLAG[--branch]:-main}" ;;
+        if [[ -n "${FLAG[--repo]:-}" && -z "${FLAG[--image]:-}" ]]; then
+          echo "${FLAG[--repo]}@${FLAG[--branch]:-default}" >"$FAKE_STATE/source"
+        elif [[ -n "${FLAG[--image]:-}" && -z "${FLAG[--repo]:-}" && -z "${FLAG[--branch]:-}" ]]; then
+          echo "image:${FLAG[--image]}" >"$FAKE_STATE/source"
+        else
+          fail_args "pass exactly one of --repo or --image (--branch only with --repo)"
+        fi
+        printf '{"id":"svc-123","name":"%s"}\n' "${FLAG[--service]}" ;;
       *) fail_args "service $sub $*" ;;
     esac ;;
   variable)
     sub=${1:-}; shift || true
     case "$sub" in
       set)
-        linked; parse "--service" "--stdin --skip-deploys --json" "$@"; need --service --stdin
+        linked; parse "--service" "--stdin --skip-deploys --json" "$@"; need --service
         service_exists "${FLAG[--service]}"
-        ((${#POS[@]} == 1)) || fail_args "with --stdin pass exactly one KEY"
-        [[ "${POS[0]}" != *=* ]] || fail_args "value must come via stdin, not the command line"
-        [[ ! -t 0 ]] || { echo "No input provided via stdin" >&2; exit 1; }
-        value="$(cat)"; value="${value%$'\n'}"
-        printf '%s' "$value" >"$FAKE_STATE/vars/${POS[0]}"
+        ((${#POS[@]} >= 1)) || fail_args "variable set needs at least one variable"
+        if [[ -n "${FLAG[--stdin]:-}" ]]; then
+          ((${#POS[@]} == 1)) || fail_args "with --stdin pass exactly one KEY"
+          [[ "${POS[0]}" != *=* ]] || fail_args "with --stdin pass KEY only"
+          [[ ! -t 0 ]] || { echo "No input provided via stdin" >&2; exit 1; }
+          value="$(cat)"; value="${value%$'\n'}"
+          [[ -n "$value" ]] || { echo "Empty value provided via stdin" >&2; exit 1; }
+          printf '%s' "$value" >"$FAKE_STATE/vars/${POS[0]}"
+        else
+          for pair in "${POS[@]}"; do
+            [[ "$pair" == ?*=* ]] || fail_args "invalid variable format: $pair"
+            printf '%s' "${pair#*=}" >"$FAKE_STATE/vars/${pair%%=*}"
+          done
+        fi
         [[ -n "${FLAG[--skip-deploys]:-}" ]] || echo deploy >>"$FAKE_STATE/deploys" ;;
       delete)
         linked; parse "--service" "--json" "$@"; need --service; ((${#POS[@]} == 1)) || fail_args "variable delete KEY"
@@ -99,6 +120,41 @@ case "$cmd" in
       echo "${FAKE_URL:?}" >"$FAKE_STATE/domain"; echo "port=${FLAG[--port]:-}" >"$FAKE_STATE/domain_port"
       printf '{\n  "domain": "%s"\n}\n' "$FAKE_URL"
     fi ;;
+  templates)
+    sub=${1:-}; shift || true
+    case "$sub" in
+      create)
+        linked; parse "--project --environment" "--json" "$@"; ((${#POS[@]} == 0)) || fail_args "templates create takes no positionals"
+        # Remember what the template captured, for the test to inspect.
+        { echo "project=$(cat "$FAKE_STATE/linked")"; echo "source=$(cat "$FAKE_STATE/source" 2>/dev/null)"
+          echo "volume=$(cat "$FAKE_STATE/volume" 2>/dev/null)"; echo "domain=$(cat "$FAKE_STATE/domain_port" 2>/dev/null)"
+          for f in "$FAKE_STATE"/vars/*; do [[ -e "$f" ]] && echo "var ${f##*/}=$(cat "$f")"; done; } >"$FAKE_STATE/template"
+        printf '{"code":"abc123","description":null,"editorUrl":"https://railway.com/workspace/templates/tpl-1","id":"tpl-1","name":"%s","status":"Unpublished","workspaceId":"ws-1"}\n' "$(cat "$FAKE_STATE/linked")" ;;
+      publish)
+        parse "--category --description --readme --readme-file --image --demo-project --workspace" "--json" "$@"
+        ((${#POS[@]} == 1)) || fail_args "templates publish TEMPLATE"; need --category --description
+        [[ -e "$FAKE_STATE/template" ]] || { echo "Template \"${POS[0]}\" not found" >&2; exit 1; }
+        # Same checks as the real CLI (src/commands/templates.rs, validate_publish_fields).
+        desc_len=$(printf '%s' "${FLAG[--description]}" | wc -m)
+        ((desc_len >= 25 && desc_len <= 75)) || { echo "description: must be 25-75 characters (got $desc_len)" >&2; exit 1; }
+        categories=" AI/ML Analytics Authentication Automation Blogs Bots CMS Observability Other Starters Storage Queues "
+        [[ "$categories" == *" ${FLAG[--category]} "* ]] || { echo "category: Invalid category" >&2; exit 1; }
+        readme="$(cat "${FLAG[--readme-file]:?--readme-file expected}")"
+        ((${#readme} >= 250 && ${#readme} <= 10000)) || { echo "readme: wrong length" >&2; exit 1; }
+        for section in "# Deploy and Host" "## About Hosting" "## Why Deploy" "## Common Use Cases" "## Dependencies for" "### Deployment Dependencies"; do
+          [[ "$readme" == *"$section"* ]] || { echo "readme: Missing required sections: $section" >&2; exit 1; }
+        done
+        for text in "[What is X?" "[Roughly 100 word" "[Use case" "[Dependency" "[Include any external links" "[Include Github"; do
+          [[ "$readme" != *"$text"* ]] || { echo "readme: Please update the default text in each section." >&2; exit 1; }
+        done
+        touch "$FAKE_STATE/published"
+        printf '{"category":"%s","code":"abc123","id":"%s","status":"Published","url":"https://railway.com/deploy/abc123"}\n' "${FLAG[--category]}" "${POS[0]}" ;;
+      *) fail_args "templates $sub $*" ;;
+    esac ;;
+  delete)
+    parse "--project --2fa-code" "--yes --json" "$@"; need --project --yes
+    [[ "${FLAG[--project]}" == "$(cat "$FAKE_STATE/project_id" 2>/dev/null)" ]] || { echo "Project \"${FLAG[--project]}\" not found" >&2; exit 1; }
+    touch "$FAKE_STATE/project_deleted"; echo "Project deletion scheduled" ;;
   redeploy)
     linked; parse "--service" "--from-source --yes --json" "$@"; need --service --yes
     service_exists "${FLAG[--service]}"
