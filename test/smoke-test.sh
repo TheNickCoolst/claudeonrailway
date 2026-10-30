@@ -77,10 +77,16 @@ fi
 docker exec "$NAME" cat /tmp/dev-checks.out
 
 echo "== What the upstream received (should be the real secrets)"
-docker exec "$NAME" grep -q "About this machine" /root/mock-requests.jsonl.anthropic-bodies \
-  && echo "PASS Claude Code loaded /etc/claude-code/CLAUDE.md" || { echo "FAIL Claude Code loaded /etc/claude-code/CLAUDE.md"; exit 1; }
-docker exec "$NAME" git -C /root/git-repos/octo/demo log --oneline -1 main | grep -q "smoke test" \
-  && echo "PASS pushed commit arrived in the repo" || { echo "FAIL pushed commit arrived in the repo"; exit 1; }
+if docker exec "$NAME" grep -q "About this machine" /root/mock-requests.jsonl.anthropic-bodies; then
+  echo "PASS Claude Code loaded /etc/claude-code/CLAUDE.md"
+else
+  echo "FAIL Claude Code loaded /etc/claude-code/CLAUDE.md"; exit 1
+fi
+if docker exec "$NAME" git -C /root/git-repos/octo/demo log --oneline -1 main | grep -q "smoke test"; then
+  echo "PASS pushed commit arrived in the repo"
+else
+  echo "FAIL pushed commit arrived in the repo"; exit 1
+fi
 docker exec "$NAME" node -e '
 const lines = require("fs").readFileSync("/root/mock-requests.jsonl", "utf8").trim().split("\n").map(JSON.parse);
 const b64 = (s) => Buffer.from(s.replace(/^Basic /, ""), "base64").toString();

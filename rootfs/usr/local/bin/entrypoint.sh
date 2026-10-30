@@ -101,6 +101,7 @@ done
 
 # --- Start ------------------------------------------------------------------
 pids=()
+# shellcheck disable=SC2329 # called by the trap below
 shutdown() {
   log "Stopping..."
   kill -TERM "${pids[@]}" 2>/dev/null || true

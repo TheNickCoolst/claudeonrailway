@@ -1,89 +1,138 @@
 # Auf Railway deployen, mit Claude-Abo
 
-Schritt für Schritt, etwa 15 Minuten. Am Ende hast du Claude Code in einem
-Browser-Terminal, das über dein Claude Pro/Max-Abo läuft und auf deine
-GitHub-Repos zugreifen kann. Deine Tokens liegen nur in Railway; Claude Code
-kann sie benutzen, aber nicht sehen.
+Am Ende hast du Claude Code in einem Browser-Terminal, das über dein Claude
+Pro/Max-Abo läuft und auf deine GitHub-Repos zugreifen kann. Deine Tokens
+liegen nur in Railway; Claude Code kann sie benutzen, aber nicht sehen.
 
-## 1. Abo-Token erstellen (auf deinem eigenen Rechner)
+Es gibt zwei Wege:
 
-Du brauchst dafür einmalig Claude Code auf deinem Computer. Dann im Terminal:
+- **Weg A: Setup-Skript** (empfohlen, ca. 10 Minuten). Ein Befehl auf deinem
+  Rechner; das Skript fragt alles ab und richtet Railway komplett ein.
+- **Weg B: Von Hand im Railway-Dashboard** (ca. 15 Minuten).
+
+## Die Tokens im Überblick
+
+| Was | Wofür | Wo bekommst du es | Gültig | Landet in |
+|---|---|---|---|---|
+| **Railway-Login** | Das Skript richtet Railway für dich ein | `railway login` (Browser). Kein Token nötig | bis Logout | bleibt auf deinem Rechner |
+| **Claude-Abo-Token** | Claude Code läuft über dein Pro/Max-Abo | `claude setup-token` auf deinem Rechner | 1 Jahr | Railway-Variable `CLAUDE_CODE_OAUTH_TOKEN` |
+| *oder* **Claude-API-Key** | Abrechnung pro Nutzung statt Abo | [console.anthropic.com](https://console.anthropic.com) → API Keys | bis du ihn löschst | `ANTHROPIC_API_KEY` |
+| **GitHub-Token** (fine-grained) | `git clone`/`push`, Pull Requests | [GitHub → neuer Token](https://github.com/settings/personal-access-tokens/new) | wählst du selbst | `GITHUB_TOKEN` |
+| **Terminal-Passwort** | Login ins Browser-Terminal | erzeugt das Skript für dich | bis du es änderst | `TERMINAL_PASSWORD` |
+| *optional:* **Railway-API-Token** | Nur für Automatisierung (CI) | Railway → Account Settings → Tokens | bis du ihn löschst | Umgebungsvariable `RAILWAY_API_TOKEN` beim Skriptaufruf. **Nicht** in die Box! |
+
+Einstellungen für den **GitHub-Token**:
+
+- **Repository access:** *Only select repositories*, nur die Repos, an denen
+  Claude arbeiten soll.
+- **Permissions:** *Contents* und *Pull requests* jeweils auf *Read and write*.
+- Optional *Workflows: Read and write*, falls Claude auch GitHub-Actions-Dateien
+  ändern soll (ohne das lehnt GitHub solche Pushes ab).
+
+Claude kann alles tun, was der Token erlaubt. Gib ihm also nur das Nötige.
+
+---
+
+## Weg A: Setup-Skript
+
+### Einmalig vorbereiten
+
+1. **Railway-Konto:** auf [railway.com](https://railway.com) mit GitHub
+   anmelden. Der Hobby-Plan (5 $/Monat inkl. 5 $ Nutzung) reicht.
+2. **Railway-CLI installieren** (eins davon):
+
+   ```bash
+   npm install -g @railway/cli
+   ```
+
+   ```bash
+   brew install railway
+   ```
+
+3. **Railway Zugriff aufs Repo geben:** auf GitHub unter
+   [Settings → Applications](https://github.com/settings/installations) bei
+   *Railway* auf *Configure* klicken und `claudeonrailway` freigeben.
+4. **Claude Code auf deinem Rechner** (für `claude setup-token`). Hast du es
+   noch nicht, kann das Skript dich trotzdem durchführen; den Token erstellst du
+   dann in einem zweiten Terminalfenster.
+
+### Skript starten
+
+Im Ordner dieses Repos (Windows: in WSL oder Git Bash):
 
 ```bash
-claude setup-token
+scripts/setup-railway.sh
 ```
 
-Es öffnet sich der Browser. Melde dich mit deinem Claude-Konto (Pro oder Max)
-an. Danach zeigt das Terminal einen Token an, der mit `sk-ant-oat01-` beginnt.
-Kopier ihn dir weg: Er wird nirgends gespeichert und gilt ein Jahr.
+Das Skript führt dich durch diese Schritte:
 
-## 2. GitHub-Token erstellen
+1. Prüft die Railway-CLI und meldet dich bei Railway an (Browser öffnet sich).
+2. Fragt, welches Repo und welcher Branch deployt werden soll. Die Vorschläge
+   kommen aus deinem Git-Checkout, Enter übernimmt sie.
+3. Legt das Railway-Projekt und den Service an.
+4. **Claude:** Wählst du *1 (Abo)*, startet es auf Wunsch `claude setup-token`.
+   Den angezeigten Token fügst du ein. Die Eingabe ist unsichtbar.
+5. **GitHub:** zeigt den Link und die nötigen Rechte, du fügst den Token ein.
+   Er wird sofort bei GitHub geprüft.
+6. Erzeugt ein zufälliges Terminal-Passwort.
+7. Speichert alles als Railway-Variablen, legt das Volume (`/home/dev`) und die
+   Adresse an, verbindet das GitHub-Repo und startet den Build.
+8. Wartet, bis die Box erreichbar ist, und zeigt **Adresse, Benutzer und
+   Passwort**. Das Passwort sofort im Passwort-Manager speichern, es wird nur
+   einmal angezeigt.
 
-Auf GitHub: **Settings → Developer settings → Personal access tokens →
-Fine-grained tokens → Generate new token**
-([direkter Link](https://github.com/settings/personal-access-tokens/new)).
+Sicherheit: Tokens werden nicht angezeigt und landen weder in deiner
+Shell-History noch in der Prozessliste (sie gehen per Standardeingabe an
+Railway). Prüft das Skript einen Token und er funktioniert nicht, bricht es ab,
+bevor irgendetwas gespeichert wird.
 
-- **Repository access:** *Only select repositories*, dann die Repos auswählen,
-  an denen Claude arbeiten soll.
-- **Permissions:** *Contents* auf *Read and write* und *Pull requests* auf
-  *Read and write*.
-- Token erstellen und kopieren (beginnt mit `github_pat_`).
+### Später: Token erneuern, Einstellungen ändern
 
-Gib dem Token nur die Repos, die wirklich nötig sind: Claude kann alles tun,
-was der Token erlaubt.
+Einfach das Skript nochmal starten. Projekt, Service, Volume und Adresse werden
+wiederverwendet. Leere Eingaben behalten den aktuellen Wert. Wechselst du von
+API-Key zu Abo (oder umgekehrt), entfernt es den alten Schlüssel automatisch.
 
-## 3. Projekt auf Railway anlegen
+### Automatisch, ohne Fragen (für Fortgeschrittene)
 
-1. Auf [railway.com](https://railway.com) mit GitHub anmelden. Der Hobby-Plan
-   (5 $/Monat, inklusive 5 $ Nutzung) reicht.
-2. **New Project → Deploy from GitHub repo** und `claudeonrailway` auswählen.
-   Falls das Repo nicht auftaucht: Railway über *Configure GitHub App* Zugriff
-   darauf geben.
-3. Railway baut sofort los. Der erste Start ohne Variablen ist egal, wir
-   ergänzen sie gleich.
+Mit `--yes` liest das Skript alles aus Umgebungsvariablen:
 
-Railway baut den `main`-Branch. Solange der Pull Request noch nicht gemerged
-ist, stell unter **Service → Settings → Source → Branch** den Branch
-`claude/stoic-planck-2ie72s` ein.
-
-## 4. Volume anlegen (damit nichts verloren geht)
-
-Rechtsklick auf den Service (oder `Strg/Cmd + K` → "Volume") → **Attach
-Volume**, Mount Path: **`/home/dev`**.
-
-Dort landen deine Projekte, der Claude-Verlauf und die Einstellungen. Ohne
-Volume ist bei jedem Deploy alles weg.
-
-## 5. Variablen eintragen
-
-**Service → Variables → Raw Editor**, dann einfügen und anpassen:
-
-```
-TERMINAL_PASSWORD=ein-langes-zufaelliges-passwort
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
-GITHUB_TOKEN=github_pat_...
-GIT_USER_NAME=Dein Name
-GIT_USER_EMAIL=deine@email.de
+```bash
+RAILWAY_API_TOKEN=... CLAUDE_CODE_OAUTH_TOKEN=... GITHUB_TOKEN=... \
+  SETUP_REPO=DEIN-NAME/claudeonrailway SETUP_BRANCH=main \
+  scripts/setup-railway.sh --yes
 ```
 
-- `TERMINAL_PASSWORD` schützt dein Terminal. Nimm mindestens 16 zufällige
-  Zeichen, z. B. aus deinem Passwort-Manager. Wer es kennt, kann auf deine
-  Repos pushen.
-- Leerzeichen oder Zeilenumbrüche beim Einfügen sind kein Problem, die werden
-  entfernt.
+Alle Variablen stehen oben im Skript.
 
-Speichern und die Änderungen deployen (Railway zeigt dafür einen
-*Deploy*-Button an).
+---
 
-## 6. Adresse erzeugen
+## Weg B: Von Hand im Railway-Dashboard
 
-**Service → Settings → Networking → Generate Domain**. Wenn nach einem Port
-gefragt wird: `8080`.
+1. **Projekt:** auf Railway *New Project → Deploy from GitHub repo* und
+   `claudeonrailway` auswählen. Railway baut den `main`-Branch. Ist der Pull
+   Request noch nicht gemerged, unter **Service → Settings → Source → Branch**
+   den Branch `claude/stoic-planck-2ie72s` einstellen.
+2. **Volume:** Rechtsklick auf den Service (oder `Strg/Cmd + K` → "Volume") →
+   **Attach Volume**, Mount Path **`/home/dev`**.
+3. **Variablen:** **Service → Variables → Raw Editor**:
 
-## 7. Ausprobieren
+   ```
+   TERMINAL_PASSWORD=ein-langes-zufaelliges-passwort
+   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
+   GITHUB_TOKEN=github_pat_...
+   GIT_USER_NAME=Dein Name
+   GIT_USER_EMAIL=deine@email.de
+   ```
 
-Die Adresse öffnen und anmelden: Benutzer **`dev`**, Passwort = dein
-`TERMINAL_PASSWORD`. Im Terminal:
+   Danach die Änderungen deployen (Railway zeigt dafür einen *Deploy*-Button).
+4. **Adresse:** **Service → Settings → Networking → Generate Domain**, Port `8080`.
+
+---
+
+## Ausprobieren
+
+Die Adresse öffnen und anmelden: Benutzer **`dev`**, Passwort aus dem Skript
+(bzw. dein `TERMINAL_PASSWORD`). Im Terminal:
 
 ```bash
 claude
@@ -109,31 +158,38 @@ cd ~/projects/DEIN-REPO && claude
 `git push` funktioniert ganz normal. Wenn du den Tab schließt, läuft deine
 Sitzung weiter, auch vom Handy aus erreichbar.
 
+## Empfohlen danach (im Railway-Dashboard)
+
+- **Tokens versiegeln:** Service → Variables → bei `CLAUDE_CODE_OAUTH_TOKEN`
+  und `GITHUB_TOKEN` im Menü *Seal* wählen. Dann kann sie niemand mehr
+  auslesen, auch du nicht im Dashboard; die Box bekommt sie trotzdem.
+- **Schlafen lassen:** Service → Settings → *Serverless* einschalten. Die Box
+  schläft nach etwa 10 Minuten ohne Aktivität und wacht beim Öffnen der Adresse
+  wieder auf. Laufende Programme stoppen dabei, Dateien und Claude-Verlauf
+  bleiben (`claude --continue` macht weiter).
+- **Obergrenzen:** Service → Settings → *Resource limits* (z. B. 2 vCPU,
+  2 GB) und in den Workspace-Einstellungen ein *Usage Limit*.
+- **Erst testen, dann deployen:** Das Repo hat GitHub-Actions-Tests. Railway
+  kann vor jedem Deploy auf grüne Checks warten (Service → Settings, Option
+  *Wait for CI*, falls in deinem Dashboard vorhanden).
+
+Gemessen: etwa 20 MB Arbeitsspeicher im Leerlauf, etwa 100 MB mit offenem
+Claude Code.
+
 ## Wenn etwas nicht klappt
 
-In Railway: **Service → Deployments → View logs**. Das Gateway schreibt dort
-verständliche Meldungen:
+Logs ansehen: `railway logs --service claude-code` (bzw. `--build` für den
+Build) oder im Dashboard **Service → Deployments → View logs**.
 
 | Meldung | Bedeutung |
 |---|---|
-| `anthropic: answered 401` | Token falsch oder abgelaufen. Neuen mit `claude setup-token` erstellen. |
+| `could not connect the repo` (Skript) | Railway sieht das Repo nicht. GitHub → Settings → Applications → Railway → Configure. |
+| `anthropic: answered 401` | Token falsch oder abgelaufen. Skript nochmal starten und neuen Token mit `claude setup-token` eintragen. |
 | `anthropic: answered 403` | Nicht erlaubt, z. B. Modell nicht in deinem Abo. Mit `/model` wechseln. |
 | `anthropic: answered 429` | Nutzungslimit erreicht. Warten, bis es zurückgesetzt wird. |
 | `github: answered 401/403/404` | GitHub-Token falsch, abgelaufen oder ohne Zugriff auf das Repo. |
 | `Temporary password for this start only` | `TERMINAL_PASSWORD` fehlt. Das Passwort für diesen Start steht direkt dahinter. |
 | `ERROR: cannot switch to the dev/broker users` | Railway erlaubt den Benutzerwechsel nicht. Der Container startet dann absichtlich nicht. |
-
-## Kosten niedrig halten
-
-- **Service → Settings → Serverless** einschalten: Die Box schläft nach etwa
-  10 Minuten ohne Aktivität und wacht beim Öffnen der Adresse wieder auf.
-  Laufende Programme stoppen dabei, Dateien und Claude-Verlauf bleiben
-  (`claude --continue` macht weiter).
-- Unter **Settings → Resource limits** eine Obergrenze setzen, z. B. 2 vCPU und 2 GB.
-- In den Railway-Workspace-Einstellungen ein **Usage Limit** festlegen.
-
-Gemessen: etwa 20 MB Arbeitsspeicher im Leerlauf, etwa 100 MB mit offenem
-Claude Code.
 
 ## Wichtig zum Abo
 
