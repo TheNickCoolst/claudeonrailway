@@ -5,6 +5,9 @@ GitHub projects, running cheaply on [Railway](https://railway.com).
 
 Your API keys live in Railway variables. **Claude Code can use them, but it
 can't see them**: they never appear in its environment, its files or its context.
+Works with a Claude API key or your Claude Pro/Max subscription.
+
+🇩🇪 **Deutsche Schritt-für-Schritt-Anleitung: [DEPLOY.de.md](DEPLOY.de.md)**
 
 ```
  Browser ──HTTPS──▶ Railway ──▶ gateway (Linux user "broker")
@@ -56,7 +59,7 @@ you want, and set a spending limit in the Anthropic Console.
    |---|---|---|
    | `TERMINAL_PASSWORD` | **yes** | Password for the web terminal. Use 16+ random characters. |
    | `ANTHROPIC_API_KEY` | one of these two | Claude API key from [console.anthropic.com](https://console.anthropic.com) |
-   | `CLAUDE_CODE_OAUTH_TOKEN` | | Claude Pro/Max subscription token (see [below](#api-key-or-subscription)) |
+   | `CLAUDE_CODE_OAUTH_TOKEN` | | Claude Pro/Max subscription token from `claude setup-token` (see [below](#api-key-or-subscription)) |
    | `GITHUB_TOKEN` | recommended | GitHub [fine-grained token](https://github.com/settings/personal-access-tokens/new): pick your repos, then *Contents: read & write* and *Pull requests: read & write* |
    | `GIT_USER_NAME`, `GIT_USER_EMAIL` | recommended | Author name and email for your commits |
    | `TERMINAL_USERNAME` | no | Login name, default `dev` |
@@ -88,11 +91,24 @@ To select text for copying, hold `Shift` while you drag.
 
 - **`ANTHROPIC_API_KEY`**: pay per use. Pointing Claude Code at a gateway
   through `ANTHROPIC_BASE_URL` is a documented, supported setup.
-- **`CLAUDE_CODE_OAUTH_TOKEN`** (Claude Pro/Max): run `claude setup-token` on
-  your own computer and paste the result. Usually cheaper for heavy use.
-  **Experimental:** the gateway sends the token the way Claude Code does
-  (tested against a fake API), but this first version hasn't been tried against
-  the real Claude API yet. If it doesn't work, use an API key.
+- **`CLAUDE_CODE_OAUTH_TOKEN`** (Claude Pro/Max subscription): usually cheaper
+  for heavy use. On your own computer, run `claude setup-token`, log in, and
+  paste the `sk-ant-oat01-...` token it prints into Railway. It's valid for one
+  year.
+  - The gateway sends the token with the same headers Claude Code uses in
+    subscription mode (`Authorization: Bearer` plus the `oauth-2025-04-20`
+    beta). I compared both side by side against a fake API. It hasn't been run
+    against the real API with a real token yet, so your first deploy is the
+    real test. If it fails, the Railway logs say why.
+  - Claude Code's header shows "API Usage Billing". That's only a label: usage
+    counts against your subscription, because that's the credential the
+    gateway sends.
+  - The default model is Opus. Switch with `/model` if your plan doesn't
+    include it or you want your limits to last longer.
+  - Spaces or line breaks pasted along with the token are removed, and a
+    subscription token put into `ANTHROPIC_API_KEY` by mistake is detected.
+  - Anthropic's terms say subscription credentials are for the person who pays
+    for the plan, so keep the box to yourself.
 
 If neither is set, Claude Code asks you to log in inside the terminal. That
 works, but the login is then stored in the terminal's home folder, where Claude
@@ -125,6 +141,18 @@ Every variable is hidden from the terminal by default. To pass a harmless
 setting through, prefix it with `DEVENV_`: `DEVENV_NODE_ENV=development`
 becomes `NODE_ENV=development` inside the terminal. Never put secrets in
 `DEVENV_` variables.
+
+## If something doesn't work
+
+Open the service's deploy logs in Railway. The gateway explains common problems:
+
+| Log line | Meaning |
+|---|---|
+| `anthropic: answered 401` | Key or subscription token wrong or expired. Make a new one (`claude setup-token`). |
+| `anthropic: answered 403` | Not allowed, e.g. your plan doesn't include the model. Use `/model`. |
+| `anthropic: answered 429` | Rate or usage limit reached. Wait for it to reset. |
+| `github: answered 401/403/404` | `GITHUB_TOKEN` is wrong, expired, or has no access to that repo. |
+| `ERROR: cannot switch to the dev/broker users` | The platform blocks switching Linux users. The box refuses to start rather than expose your keys. |
 
 ## Keeping it cheap
 

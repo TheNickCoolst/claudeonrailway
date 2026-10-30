@@ -18,6 +18,19 @@ GATEWAY_URL="http://127.0.0.1:${GATEWAY_LOCAL_PORT}"
 
 log() { echo "[entrypoint] $*"; }
 
+# --- Preflight: the secret split only works if we can switch Linux users ----
+if [[ "$(id -u)" != 0 ]]; then
+  log "ERROR: this container must start as root so it can keep your secrets away from the terminal."
+  log "       Remove RAILWAY_RUN_UID (or any setting that runs the container as another user)."
+  exit 1
+fi
+if ! setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- true 2>/dev/null \
+   || ! setpriv --reuid=broker --regid=broker --init-groups -- true 2>/dev/null; then
+  log "ERROR: cannot switch to the dev/broker users (the platform blocks setuid?). Not starting,"
+  log "       because the terminal would otherwise see your secrets."
+  exit 1
+fi
+
 # --- Terminal password -------------------------------------------------------
 if [[ -z "${TERMINAL_PASSWORD:-}" ]]; then
   TERMINAL_PASSWORD="$(node -e 'process.stdout.write(require("crypto").randomBytes(18).toString("base64url"))')"
