@@ -21,6 +21,7 @@ const http = require('node:http');
 const https = require('node:https');
 const net = require('node:net');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 
 const env = process.env;
 
@@ -69,13 +70,19 @@ function parseTarget(value, name) {
   return url;
 }
 
+// Read a secret from the environment. Trims spaces and line breaks,
+// which easily sneak in when you paste a token into Railway.
+function secret(name) {
+  return (env[name] || '').trim();
+}
+
 // Replace ${VAR} with the value of env var VAR (used by PROXY_ROUTES headers).
 function expandEnv(value, routeName) {
   return String(value).replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => {
     if (env[name] === undefined) {
       throw new Error(`route "${routeName}": variable ${name} is not set`);
     }
-    return env[name];
+    return secret(name);
   });
 }
 
@@ -90,9 +97,18 @@ function addAnthropicOAuthBeta(headers) {
 function buildRoutes() {
   const routes = new Map();
 
-  // Claude API. An API key is preferred if both are set.
-  const apiKey = env.ANTHROPIC_API_KEY;
-  const oauthToken = env.CLAUDE_CODE_OAUTH_TOKEN;
+  // Claude API: an API key, or a Claude Pro/Max subscription token from `claude setup-token`.
+  // An API key is preferred if both are set.
+  let apiKey = secret('ANTHROPIC_API_KEY');
+  let oauthToken = secret('CLAUDE_CODE_OAUTH_TOKEN');
+  if (apiKey.startsWith('sk-ant-oat')) {
+    log('NOTE: ANTHROPIC_API_KEY holds a subscription token (sk-ant-oat...); using it as CLAUDE_CODE_OAUTH_TOKEN');
+    oauthToken = apiKey;
+    apiKey = '';
+  }
+  if (oauthToken && !apiKey && !oauthToken.startsWith('sk-ant-oat')) {
+    log('WARNING: CLAUDE_CODE_OAUTH_TOKEN does not start with "sk-ant-oat". Create it with `claude setup-token`.');
+  }
   if (apiKey || oauthToken) {
     routes.set('anthropic', {
       target: parseTarget(env.ANTHROPIC_UPSTREAM || 'https://api.anthropic.com', 'anthropic'),
@@ -107,7 +123,7 @@ function buildRoutes() {
 
   // GitHub over git's HTTPS protocol (clone / fetch / push).
   // Only git endpoints are allowed, so the token can't be used for anything else on github.com.
-  const githubToken = env.GITHUB_TOKEN;
+  const githubToken = secret('GITHUB_TOKEN');
   routes.set('github', {
     target: parseTarget(env.GITHUB_UPSTREAM || 'https://github.com', 'github'),
     strip: new Set(['authorization']),
@@ -172,6 +188,47 @@ function sendJson(res, status, body) {
   res.end(`${JSON.stringify(body, null, 2)}\n`);
 }
 
+const ERROR_HINTS = {
+  anthropic: {
+    401: 'the key or token was rejected. Check ANTHROPIC_API_KEY / CLAUDE_CODE_OAUTH_TOKEN '
+      + '(setup-token tokens expire after a year; create a new one with `claude setup-token`)',
+    403: 'not allowed. With a subscription, your plan may not include this model: switch with /model',
+    429: 'rate or usage limit reached. With a subscription, wait for your limit to reset',
+  },
+  github: {
+    401: 'GitHub rejected GITHUB_TOKEN (expired or wrong?)',
+    403: 'GITHUB_TOKEN has no access to this repo (check the token\'s repositories and permissions)',
+    404: 'repo not found, or GITHUB_TOKEN has no access to it',
+  },
+};
+
+// Log errors from the Claude API and git, so problems with keys or limits show up in the
+// Railway logs. Only the status and the API's error message are logged, never request headers.
+function logUpstreamError(route, upRes) {
+  const hints = ERROR_HINTS[route.name];
+  if (!hints || upRes.statusCode < 400) return;
+  if (route.name === 'github' && !hints[upRes.statusCode]) return;
+  const chunks = [];
+  let size = 0;
+  upRes.on('data', (chunk) => {
+    if (size < 8192) { chunks.push(chunk); size += chunk.length; }
+  });
+  upRes.on('end', () => {
+    let detail = '';
+    try {
+      let body = Buffer.concat(chunks);
+      const encoding = String(upRes.headers['content-encoding'] || '');
+      if (encoding.includes('gzip')) body = zlib.gunzipSync(body);
+      else if (encoding.includes('br')) body = zlib.brotliDecompressSync(body);
+      else if (encoding.includes('deflate')) body = zlib.inflateSync(body);
+      const parsed = JSON.parse(body.toString('utf8'));
+      if (parsed.error) detail = ` (${parsed.error.type || 'error'}: ${String(parsed.error.message || '').slice(0, 200)})`;
+    } catch { /* not JSON: log the status only */ }
+    const hint = hints[upRes.statusCode] || (upRes.statusCode >= 500 ? 'upstream problem, usually temporary' : '');
+    log(`${route.name}: answered ${upRes.statusCode}${detail}${hint ? ` - ${hint}` : ''}`);
+  });
+}
+
 function forward(req, res, route, path) {
   const { target } = route;
   const headers = {};
@@ -200,6 +257,7 @@ function forward(req, res, route, path) {
       if (!HOP_BY_HOP.has(name)) outHeaders[name] = value;
     }
     res.writeHead(upRes.statusCode, upRes.statusMessage, outHeaders);
+    logUpstreamError(route, upRes);
     upRes.pipe(res);
   });
 
@@ -395,9 +453,22 @@ publicServer.on('upgrade', handleUpgrade);
 // Keep idle connections longer than Railway's edge proxy does, to avoid random 502s.
 publicServer.keepAliveTimeout = 65_000;
 publicServer.headersTimeout = 66_000;
-publicServer.listen(PUBLIC_PORT, '0.0.0.0', () => {
-  log(`web terminal on port ${PUBLIC_PORT} (user "${TERMINAL_USERNAME}")`);
-});
+// Listen on IPv6 and IPv4 ("::"); fall back to IPv4 only where IPv6 is switched off.
+function listenPublic(host) {
+  const onError = (err) => {
+    if (host === '::' && (err.code === 'EAFNOSUPPORT' || err.code === 'EADDRNOTAVAIL')) {
+      listenPublic('0.0.0.0');
+    } else {
+      throw err;
+    }
+  };
+  publicServer.once('error', onError);
+  publicServer.listen(PUBLIC_PORT, host, () => {
+    publicServer.removeListener('error', onError);
+    log(`web terminal on port ${PUBLIC_PORT} (user "${TERMINAL_USERNAME}")`);
+  });
+}
+listenPublic('::');
 
 const localServer = http.createServer(handleLocal);
 localServer.requestTimeout = 0; // allow long uploads such as big git pushes

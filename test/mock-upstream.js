@@ -85,6 +85,10 @@ http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
   req.on('end', () => {
+    if (req.url.endsWith('/force-401')) {
+      res.writeHead(401, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ type: 'error', error: { type: 'authentication_error', message: 'invalid bearer token' } }));
+    }
     if (req.url.startsWith('/anthropic-up/')) {
       fs.appendFileSync(`${LOG}.anthropic-bodies`, `${body}\n`, { mode: 0o600 });
     }

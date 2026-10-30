@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Shell setup for the dev user (login shells; tmux starts login shells).
 
 case ":$PATH:" in

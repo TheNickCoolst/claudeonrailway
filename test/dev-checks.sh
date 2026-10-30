@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Checks are single-quoted on purpose: check() evals them later.
+# shellcheck disable=SC2016,SC2034
 # Runs INSIDE the web terminal as the dev user (typed in by the smoke test).
 # Prints PASS/FAIL lines. Secrets used by the smoke test all contain "SECRET".
 set -u

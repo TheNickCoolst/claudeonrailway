@@ -77,10 +77,16 @@ fi
 docker exec "$NAME" cat /tmp/dev-checks.out
 
 echo "== What the upstream received (should be the real secrets)"
-docker exec "$NAME" grep -q "About this machine" /root/mock-requests.jsonl.anthropic-bodies \
-  && echo "PASS Claude Code loaded /etc/claude-code/CLAUDE.md" || { echo "FAIL Claude Code loaded /etc/claude-code/CLAUDE.md"; exit 1; }
-docker exec "$NAME" git -C /root/git-repos/octo/demo log --oneline -1 main | grep -q "smoke test" \
-  && echo "PASS pushed commit arrived in the repo" || { echo "FAIL pushed commit arrived in the repo"; exit 1; }
+if docker exec "$NAME" grep -q "About this machine" /root/mock-requests.jsonl.anthropic-bodies; then
+  echo "PASS Claude Code loaded /etc/claude-code/CLAUDE.md"
+else
+  echo "FAIL Claude Code loaded /etc/claude-code/CLAUDE.md"; exit 1
+fi
+if docker exec "$NAME" git -C /root/git-repos/octo/demo log --oneline -1 main | grep -q "smoke test"; then
+  echo "PASS pushed commit arrived in the repo"
+else
+  echo "FAIL pushed commit arrived in the repo"; exit 1
+fi
 docker exec "$NAME" node -e '
 const lines = require("fs").readFileSync("/root/mock-requests.jsonl", "utf8").trim().split("\n").map(JSON.parse);
 const b64 = (s) => Buffer.from(s.replace(/^Basic /, ""), "base64").toString();
@@ -100,6 +106,36 @@ check(lines.every((l) => l.host === "127.0.0.1:9999"), "no request was sent to a
 check(!JSON.stringify(lines).includes("managed-by-gateway"), "placeholder never reached the upstream");
 process.exit(failed ? 1 : 0);
 '
+
+echo "== Subscription token (second gateway; token pasted into ANTHROPIC_API_KEY with extra spaces)"
+docker exec -d -u broker \
+  -e PORT=9080 -e GATEWAY_LOCAL_PORT=9787 \
+  -e $'ANTHROPIC_API_KEY=  sk-ant-oat01-SECRET-subscription \n' \
+  -e ANTHROPIC_UPSTREAM=http://127.0.0.1:9999/anthropic-sub \
+  "$NAME" sh -c 'exec node /opt/gateway/server.js > /tmp/gw-sub.log 2>&1'
+for _ in $(seq 1 20); do docker exec "$NAME" curl -sf -o /dev/null http://127.0.0.1:9787/_routes && break; sleep 0.5; done
+docker exec "$NAME" curl -s -o /dev/null -X POST -H 'x-api-key: placeholder' -H 'anthropic-beta: claude-code-20250219' \
+  -d '{}' http://127.0.0.1:9787/anthropic/v1/messages
+docker exec "$NAME" curl -s -o /dev/null http://127.0.0.1:9787/anthropic/force-401
+sleep 1
+docker exec "$NAME" node -e '
+const fs = require("fs");
+const lines = fs.readFileSync("/root/mock-requests.jsonl", "utf8").trim().split("\n").map(JSON.parse);
+const log = fs.readFileSync("/tmp/gw-sub.log", "utf8");
+let failed = false;
+const check = (ok, name) => { console.log((ok ? "PASS " : "FAIL ") + name); if (!ok) failed = true; };
+const sub = lines.filter((l) => l.path === "/anthropic-sub/v1/messages");
+check(sub.length === 1 && sub[0].authorization === "Bearer sk-ant-oat01-SECRET-subscription" && !sub[0]["x-api-key"],
+  "subscription token sent as Bearer, spaces removed, placeholder dropped");
+check(sub.length === 1 && /claude-code-20250219/.test(sub[0]["anthropic-beta"]) && /oauth-2025-04-20/.test(sub[0]["anthropic-beta"]),
+  "oauth beta added, existing betas kept");
+check(log.includes("using it as CLAUDE_CODE_OAUTH_TOKEN"), "token in the wrong variable is detected");
+check(/anthropic: answered 401 \(authentication_error: invalid bearer token\)/.test(log), "rejected token is explained in the logs");
+check(!log.includes("SECRET"), "gateway logs contain no secret");
+process.exit(failed ? 1 : 0);
+'
+if docker logs "$NAME" 2>&1 | grep -q SECRET; then echo "FAIL container logs contain no secret"; exit 1; fi
+echo "PASS container logs contain no secret"
 
 if docker exec "$NAME" grep -q '^FAIL' /tmp/dev-checks.out || ! docker exec "$NAME" grep -q DONE /tmp/dev-checks.out; then
   echo "Some checks inside the terminal failed."

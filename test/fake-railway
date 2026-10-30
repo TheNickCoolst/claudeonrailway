@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Fake Railway CLI for testing scripts/setup-railway.sh without a Railway account.
+# Accepts only the argument shapes the real CLI (v5.71) accepts for the commands the
+# setup script uses, and keeps simple state in $FAKE_STATE. Anything else fails with 99.
+set -euo pipefail
+: "${FAKE_STATE:?}"
+mkdir -p "$FAKE_STATE/vars"
+printf '%s\n' "$*" >>"$FAKE_STATE/argv.log"
+
+fail_args() { echo "fake railway: unexpected arguments: $*" >&2; exit 99; }
+
+# parse ALLOWED_VALUE_FLAGS ALLOWED_BOOL_FLAGS args...  -> sets FLAG_<name>, POS (array)
+declare -A FLAG
+POS=()
+parse() {
+  local value_flags=" $1 " bool_flags=" $2 "; shift 2
+  while (($#)); do
+    case "$1" in
+      --*)
+        if [[ "$value_flags" == *" $1 "* ]]; then
+          (($# >= 2)) || fail_args "$1 needs a value"
+          FLAG[$1]=$2; shift 2
+        elif [[ "$bool_flags" == *" $1 "* ]]; then
+          FLAG[$1]=1; shift
+        else
+          fail_args "unknown flag $1"
+        fi ;;
+      *) POS+=("$1"); shift ;;
+    esac
+  done
+}
+need() { for f in "$@"; do [[ -n "${FLAG[$f]:-}" ]] || fail_args "missing $f"; done; }
+linked() { [[ -e "$FAKE_STATE/linked" ]] || { echo "No linked project found. Run railway link" >&2; exit 1; }; }
+service_exists() { [[ -e "$FAKE_STATE/service_$1" ]] || { echo "Service '$1' not found" >&2; exit 1; }; }
+
+cmd=${1:-}; shift || true
+case "$cmd" in
+  --version) echo "railway 5.71.0" ;;
+  whoami) echo "Logged in as Test User (test@example.com)" ;;
+  login) touch "$FAKE_STATE/logged_in" ;;
+  status) linked; echo "Project: $(cat "$FAKE_STATE/linked")" ;;
+  init)
+    parse "--name --workspace" "--json" "$@"; need --name; ((${#POS[@]} == 0)) || fail_args "init takes no positionals"
+    echo "${FLAG[--name]}" >"$FAKE_STATE/linked"; echo "Created project ${FLAG[--name]}" ;;
+  add)
+    linked; parse "--service" "--json" "$@"; need --service --json
+    touch "$FAKE_STATE/service_${FLAG[--service]}"; echo "${FLAG[--service]}" >"$FAKE_STATE/linked_service"
+    echo "Enter a service name: ${FLAG[--service]}" >&2
+    printf '{"id":"svc-123","name":"%s"}\n' "${FLAG[--service]}" ;;
+  service)
+    sub=${1:-}; shift || true
+    case "$sub" in
+      link)
+        linked; parse "" "" "$@"; ((${#POS[@]} == 1)) || fail_args "service link NAME"
+        service_exists "${POS[0]}"; echo "${POS[0]}" >"$FAKE_STATE/linked_service"; echo "Linked service ${POS[0]}" ;;
+      source)
+        [[ "${1:-}" == connect ]] || fail_args "service source $*"; shift
+        linked; parse "--repo --branch --service" "--json" "$@"; need --repo --service
+        service_exists "${FLAG[--service]}"
+        echo "${FLAG[--repo]}@${FLAG[--branch]:-default}" >"$FAKE_STATE/source"
+        printf '{"id":"svc-123","name":"%s","repo":"%s","branch":"%s"}\n' "${FLAG[--service]}" "${FLAG[--repo]}" "${FLAG[--branch]:-main}" ;;
+      *) fail_args "service $sub $*" ;;
+    esac ;;
+  variable)
+    sub=${1:-}; shift || true
+    case "$sub" in
+      set)
+        linked; parse "--service" "--stdin --skip-deploys --json" "$@"; need --service --stdin
+        service_exists "${FLAG[--service]}"
+        ((${#POS[@]} == 1)) || fail_args "with --stdin pass exactly one KEY"
+        [[ "${POS[0]}" != *=* ]] || fail_args "value must come via stdin, not the command line"
+        [[ ! -t 0 ]] || { echo "No input provided via stdin" >&2; exit 1; }
+        value="$(cat)"; value="${value%$'\n'}"
+        printf '%s' "$value" >"$FAKE_STATE/vars/${POS[0]}"
+        [[ -n "${FLAG[--skip-deploys]:-}" ]] || echo deploy >>"$FAKE_STATE/deploys" ;;
+      delete)
+        linked; parse "--service" "--json" "$@"; need --service; ((${#POS[@]} == 1)) || fail_args "variable delete KEY"
+        [[ -e "$FAKE_STATE/vars/${POS[0]}" ]] || { echo "Variable '${POS[0]}' not found" >&2; exit 1; }
+        rm -f "$FAKE_STATE/vars/${POS[0]}"; echo deploy >>"$FAKE_STATE/deploys" ;;
+      *) fail_args "variable $sub $*" ;;
+    esac ;;
+  volume)
+    linked
+    # --service/--environment/--project belong to `volume` itself, before the subcommand.
+    while [[ "${1:-}" == --service || "${1:-}" == --environment || "${1:-}" == --project ]]; do shift 2; done
+    [[ "${1:-}" == add ]] || fail_args "volume $*"; shift
+    parse "--mount-path" "--json" "$@"; need --mount-path
+    [[ -e "$FAKE_STATE/linked_service" ]] || { echo "No service found." >&2; exit 1; }
+    if [[ -e "$FAKE_STATE/volume" ]]; then
+      echo "A volume is already mounted on service $(cat "$FAKE_STATE/linked_service") in environment production" >&2; exit 1
+    fi
+    echo "${FLAG[--mount-path]}" >"$FAKE_STATE/volume"; echo '{"id":"vol-1","name":"vol"}' ;;
+  domain)
+    linked; parse "--port --service" "--json" "$@"; need --service; ((${#POS[@]} == 0)) || fail_args "custom domains not expected"
+    service_exists "${FLAG[--service]}"
+    if [[ -e "$FAKE_STATE/domain" ]]; then
+      printf '{\n  "domains": [\n    "%s"\n  ]\n}\n' "$(cat "$FAKE_STATE/domain")"
+    else
+      echo "${FAKE_URL:?}" >"$FAKE_STATE/domain"; echo "port=${FLAG[--port]:-}" >"$FAKE_STATE/domain_port"
+      printf '{\n  "domain": "%s"\n}\n' "$FAKE_URL"
+    fi ;;
+  redeploy)
+    linked; parse "--service" "--from-source --yes --json" "$@"; need --service --yes
+    service_exists "${FLAG[--service]}"
+    [[ -n "${FLAG[--from-source]:-}" || -e "$FAKE_STATE/deployed" ]] || { echo "No deployment found for service" >&2; exit 1; }
+    touch "$FAKE_STATE/deployed"; echo deploy >>"$FAKE_STATE/deploys"; echo "Triggered a deploy" ;;
+  *) fail_args "$cmd $*" ;;
+esac
