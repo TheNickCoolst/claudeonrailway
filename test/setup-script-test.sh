@@ -28,6 +28,9 @@ MOCK_PID=$!
 trap 'kill $MOCK_PID 2>/dev/null || true' EXIT
 for _ in $(seq 1 50); do curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null && break; sleep 0.1; done
 
+# No git identity, so prompts look the same on every machine.
+: >"$WORK/empty-gitconfig"
+
 # A fake `claude` that "creates" a subscription token.
 mkdir -p "$WORK/bin"
 printf '#!/bin/sh\necho "Your OAuth token: sk-ant-oat01-PTYSECRET"\n' >"$WORK/bin/claude"
@@ -40,6 +43,7 @@ run_setup() { # STATE_DIR [env assignments...] -- [script args]
     RAILWAY_BIN="$ROOT/test/fake-railway" FAKE_STATE="$state" FAKE_URL="http://127.0.0.1:$PORT" \
     SETUP_GITHUB_API="http://127.0.0.1:$PORT" SETUP_ANTHROPIC_API="http://127.0.0.1:$PORT" \
     SETUP_REPO=octo/demo SETUP_BRANCH=main SETUP_WAIT_SECONDS=20 PATH="$WORK/bin:$PATH" \
+    GIT_CONFIG_GLOBAL="$WORK/empty-gitconfig" GIT_CONFIG_NOSYSTEM=1 \
     "$@")
 }
 var() { cat "$1/vars/$2" 2>/dev/null || true; }
@@ -98,8 +102,8 @@ answers = [  # (prompt text to wait for, what to type)
     ("Run `claude setup-token` now?", "y"),
     ("Paste the subscription token (hidden)", "  sk-ant-oat01-PTYSECRET  "),
     ("Paste the GitHub token (hidden, empty = skip)", "ghp_TESTSECRET"),
-    ("Name [", "Pty User"),
-    ("Email [", "pty@example.com"),
+    ("Name: ", "Pty User"),  # no default: the test hides this machine's git config
+    ("Email: ", "pty@example.com"),
     ("Apply now? [Y/n]", ""),
 ]
 pid, fd = pty.fork()
