@@ -101,10 +101,15 @@ function buildRoutes() {
   // An API key is preferred if both are set.
   let apiKey = secret('ANTHROPIC_API_KEY');
   let oauthToken = secret('CLAUDE_CODE_OAUTH_TOKEN');
+  // Accept either kind of credential in either variable (the Railway template has one field).
   if (apiKey.startsWith('sk-ant-oat')) {
     log('NOTE: ANTHROPIC_API_KEY holds a subscription token (sk-ant-oat...); using it as CLAUDE_CODE_OAUTH_TOKEN');
     oauthToken = apiKey;
     apiKey = '';
+  } else if (!apiKey && oauthToken.startsWith('sk-ant-api')) {
+    log('NOTE: CLAUDE_CODE_OAUTH_TOKEN holds an API key (sk-ant-api...); using it as ANTHROPIC_API_KEY');
+    apiKey = oauthToken;
+    oauthToken = '';
   }
   if (oauthToken && !apiKey && !oauthToken.startsWith('sk-ant-oat')) {
     log('WARNING: CLAUDE_CODE_OAUTH_TOKEN does not start with "sk-ant-oat". Create it with `claude setup-token`.');

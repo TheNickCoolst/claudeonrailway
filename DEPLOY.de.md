@@ -4,11 +4,14 @@ Am Ende hast du Claude Code in einem Browser-Terminal, das über dein Claude
 Pro/Max-Abo läuft und auf deine GitHub-Repos zugreifen kann. Deine Tokens
 liegen nur in Railway; Claude Code kann sie benutzen, aber nicht sehen.
 
-Es gibt zwei Wege:
+Es gibt drei Wege:
 
-- **Weg A: Setup-Skript** (empfohlen, ca. 10 Minuten). Ein Befehl auf deinem
-  Rechner; das Skript fragt alles ab und richtet Railway komplett ein.
-- **Weg B: Von Hand im Railway-Dashboard** (ca. 15 Minuten).
+- **Weg A: Railway-Template mit Deploy-Button.** Einmal einrichten (ca. 10
+  Minuten), danach ist jedes Deployment: Button klicken, Tokens eintragen,
+  fertig. Railway braucht dafür keinen Zugriff auf dein privates Repo.
+- **Weg B: Setup-Skript** (ca. 10 Minuten). Ein Befehl auf deinem Rechner;
+  das Skript fragt alles ab und richtet Railway komplett ein.
+- **Weg C: Von Hand im Railway-Dashboard** (ca. 15 Minuten).
 
 ## Die Tokens im Überblick
 
@@ -33,7 +36,64 @@ Claude kann alles tun, was der Token erlaubt. Gib ihm also nur das Nötige.
 
 ---
 
-## Weg A: Setup-Skript
+## Weg A: Railway-Template mit Deploy-Button
+
+So funktioniert es: Nach jedem erfolgreichen Test auf `main` baut GitHub
+Actions das fertige Image und legt es unter
+`ghcr.io/thenickcoolst/claudeonrailway:latest` ab. Das Template startet genau
+dieses Image. Railway muss also nichts bauen und braucht keinen Zugriff auf
+dein Repo, das privat bleiben kann.
+
+### Einmal einrichten
+
+1. **Image veröffentlichen lassen:** Auf GitHub unter *Actions* muss der
+   letzte Lauf "Tests" auf `main` grün sein, inklusive Job *Publish image*.
+2. **Image öffentlich machen:** github.com → dein Profil → *Packages* →
+   `claudeonrailway` → *Package settings* → ganz unten *Change visibility* →
+   *Public*. Das Image enthält den Code dieses Repos, aber keine Geheimnisse:
+   deine Tokens kommen erst beim Deployen dazu.
+3. **Railway-CLI installieren und Template erstellen** (im Repo-Ordner):
+
+   ```bash
+   npm install -g @railway/cli
+   ```
+
+   ```bash
+   scripts/create-railway-template.sh
+   ```
+
+   Das Skript macht Folgendes:
+   - Es meldet dich bei Railway an und prüft, ob das Image öffentlich
+     erreichbar ist.
+   - Es baut ein Hilfsprojekt **ohne Tokens**: Image, Volume `/home/dev`,
+     Adresse auf Port 8080 und leere Felder für deine Tokens.
+   - Daraus macht es ein Template, veröffentlicht es und löscht das
+     Hilfsprojekt wieder.
+   - Am Ende zeigt es dir den **Deploy-Link** und einen fertigen Button für
+     die README.
+
+   Hinweis: Veröffentlichte Templates erscheinen im Railway-Marktplatz. Sie
+   enthalten keine Geheimnisse; jeder, der deployt, trägt seine eigenen
+   Tokens ein.
+
+### Deployen (jedes Mal)
+
+1. Den Deploy-Link öffnen und auf *Deploy* klicken.
+2. Die Felder ausfüllen:
+   - `CLAUDE_CODE_OAUTH_TOKEN`: dein Abo-Token aus `claude setup-token`
+     (ein API-Key geht hier auch).
+   - `GITHUB_TOKEN`: dein GitHub-Token.
+   - `TERMINAL_PASSWORD`: ein langes Passwort deiner Wahl.
+   - `GIT_USER_NAME` und `GIT_USER_EMAIL`: Name und E-Mail für deine Commits.
+3. Warten, bis der Service läuft, dann seine Adresse öffnen und als `dev`
+   einloggen (siehe [Ausprobieren](#ausprobieren)).
+
+Updates: Neue Versionen landen automatisch als neues Image, sobald die Tests
+auf `main` grün sind. In Railway reicht dann *Redeploy* am Service.
+
+---
+
+## Weg B: Setup-Skript
 
 ### Einmalig vorbereiten
 
@@ -106,7 +166,7 @@ Alle Variablen stehen oben im Skript.
 
 ---
 
-## Weg B: Von Hand im Railway-Dashboard
+## Weg C: Von Hand im Railway-Dashboard
 
 1. **Projekt:** auf Railway *New Project → Deploy from GitHub repo* und
    `claudeonrailway` auswählen. Railway baut den `main`-Branch. Ist der Pull
