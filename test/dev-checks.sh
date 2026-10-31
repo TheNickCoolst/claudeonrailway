@@ -22,6 +22,8 @@ check "DEVENV_ prefix passthrough works"   '[ "${MY_SETTING:-}" = hello ]'
 check "routes list works"                  'curl -sf "$GATEWAY_URL/_routes" | grep -q github-api'
 check "git user from GIT_USER_NAME"        '[ "$(git config user.name)" = "Smoke Test" ]'
 check "gateway only on loopback"           '! ss -ltn | grep -E ":(8787|7681)\b" | grep -vq "127.0.0.1"'
+check "web studio answers on 7681"         'curl -sf http://127.0.0.1:7681/healthz | grep -q ok'
+check "claude agent sdk loads"             'node -e "import(\"@anthropic-ai/claude-agent-sdk\").then(() => process.exit(0))" 2>/dev/null'
 
 out=$(timeout 120 claude -p "say hi" 2>&1)
 if [[ "$out" == *"Hello from the mock upstream"* ]]; then pass "claude -p answers through gateway"

@@ -27,7 +27,7 @@ const env = process.env;
 
 const PUBLIC_PORT = toPort(env.PORT, 8080);
 const LOCAL_PORT = toPort(env.GATEWAY_LOCAL_PORT, 8787);
-const TTYD_PORT = toPort(env.TTYD_PORT, 7681);
+const TTYD_PORT = toPort(env.APP_PORT || env.TTYD_PORT, 7681);
 const TERMINAL_USERNAME = env.TERMINAL_USERNAME || 'dev';
 const TERMINAL_PASSWORD = env.TERMINAL_PASSWORD || '';
 
@@ -371,7 +371,7 @@ function isSameOrigin(req) {
 
 const STARTING_PAGE = `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="3">
 <title>Starting…</title><body style="font-family:system-ui;background:#111;color:#ddd;padding:2rem">
-<p>The terminal is starting. This page reloads by itself.</p></body>`;
+<p>Claude Dev Studio is starting. This page reloads by itself.</p></body>`;
 
 function handlePublic(req, res) {
   if (req.url === '/healthz') {
@@ -383,7 +383,7 @@ function handlePublic(req, res) {
   const sessionOk = !basicOk && hasValidSession(req);
   if (!basicOk && !sessionOk) {
     res.writeHead(401, {
-      'www-authenticate': 'Basic realm="Claude Code dev environment", charset="UTF-8"',
+      'www-authenticate': 'Basic realm="Claude Dev Studio", charset="UTF-8"',
       'content-type': 'text/plain',
     });
     return res.end('Login required\n');

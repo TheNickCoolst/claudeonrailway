@@ -19,7 +19,8 @@
 # values as environment variables:
 #   SETUP_PROJECT, SETUP_SERVICE, SETUP_REPO, SETUP_BRANCH,
 #   CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY, GITHUB_TOKEN,
-#   TERMINAL_PASSWORD (generated if missing), GIT_USER_NAME, GIT_USER_EMAIL,
+#   TERMINAL_PASSWORD (generated if missing), TERMINAL_USERNAME (default dev
+#   on first setup; omitted later keeps the current name), GIT_USER_NAME, GIT_USER_EMAIL,
 #   SETUP_WORKSPACE (only if your Railway account has several workspaces),
 #   SETUP_WAIT_SECONDS (how long to wait for the deploy, default 900, 0 = don't wait)
 set -euo pipefail
@@ -274,6 +275,29 @@ else
 fi
 
 step "Terminal login"
+# Basic auth is "username:password", so the name cannot contain ":" or spaces.
+valid_login_name() { [[ "$1" =~ ^[A-Za-z][A-Za-z0-9._-]{0,31}$ ]]; }
+
+NEW_USERNAME=''
+if [[ -n "${TERMINAL_USERNAME:-}" ]]; then
+  NEW_USERNAME="$TERMINAL_USERNAME"
+  ok "using TERMINAL_USERNAME from your environment"
+elif $INTERACTIVE; then
+  if $EXISTING_SERVICE; then
+    ask NEW_USERNAME "Login name for the web terminal (empty keeps the current one)" ""
+  else
+    ask NEW_USERNAME "Login name for the web terminal" "dev"
+  fi
+elif $EXISTING_SERVICE; then
+  ok "keeping the current login name"
+else
+  NEW_USERNAME=dev
+  ok "login name: dev"
+fi
+if [[ -n "$NEW_USERNAME" ]] && ! valid_login_name "$NEW_USERNAME"; then
+  die "login name must start with a letter and use only letters, digits, '.', '_' or '-' (max 32 characters)."
+fi
+
 NEW_PASSWORD=''
 if [[ -n "${TERMINAL_PASSWORD:-}" ]]; then
   NEW_PASSWORD="$TERMINAL_PASSWORD"
@@ -305,6 +329,7 @@ if [[ -n "$CLAUDE_VAR" ]]; then
   fi
 fi
 [[ -n "$GITHUB_VALUE" ]] && set_var GITHUB_TOKEN "$GITHUB_VALUE"
+[[ -n "$NEW_USERNAME" ]] && set_var TERMINAL_USERNAME "$NEW_USERNAME"
 [[ -n "$NEW_PASSWORD" ]] && set_var TERMINAL_PASSWORD "$NEW_PASSWORD"
 [[ -n "$GIT_NAME" ]] && set_var GIT_USER_NAME "$GIT_NAME"
 [[ -n "$GIT_EMAIL" ]] && set_var GIT_USER_EMAIL "$GIT_EMAIL"
@@ -354,7 +379,11 @@ fi
 # --- Done ------------------------------------------------------------------------------
 printf '\n%sDone.%s\n\n' "$BOLD" "$RESET"
 printf '  Open:      %s\n' "$URL"
-printf '  User:      %s\n' "dev"
+if [[ -n "$NEW_USERNAME" ]]; then
+  printf '  User:      %s\n' "$NEW_USERNAME"
+else
+  printf '  User:      unchanged\n'
+fi
 if [[ -n "$NEW_PASSWORD" ]]; then
   printf '  Password:  %s\n' "$NEW_PASSWORD"
   printf '  %sSave the password in your password manager now; it is not shown again.%s\n' "$YELLOW" "$RESET"
@@ -363,8 +392,9 @@ else
 fi
 cat <<EOF
 
-  In the terminal:   claude
-  Clone a project:   git clone https://github.com/OWNER/REPO ~/projects/REPO
+  Open in browser:   $URL
+  Web Studio:        Manage projects, run Claude Agent SDK tasks, review diffs, commit & push to GitHub
+  In terminal:       Run shell commands directly in your project directory
 
   Optional, in the Railway dashboard (service → Settings):
     - Serverless: on, so it sleeps when unused and costs less

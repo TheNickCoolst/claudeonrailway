@@ -13,10 +13,11 @@ if [ -n "$PS1" ] && [ "$(id -un)" = "dev" ] && [ -z "$DEVENV_WELCOME_SHOWN" ]; t
   export DEVENV_WELCOME_SHOWN=1
   cat <<'EOF'
 
-  Claude Code on Railway
-  ----------------------
-  git clone https://github.com/OWNER/REPO ~/projects/REPO   (token added for you)
-  cd ~/projects/REPO && claude
+  Claude Dev Studio on Railway (Claude Agent SDK)
+  -----------------------------------------------
+  Web UI: http://127.0.0.1:7681
+  Projects directory: ~/projects (persisted across restarts)
+  git clone https://github.com/OWNER/REPO ~/projects/REPO (token added automatically)
 
   tmux:  Ctrl-b c  new window    Ctrl-b n  next window    Shift + drag  select text
   Your session keeps running when you close the browser tab.

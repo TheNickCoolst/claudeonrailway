@@ -1,8 +1,21 @@
-# Auf Railway deployen, mit Claude-Abo
+# Auf Railway deployen, mit dem Claude Agent SDK & Web-Studio
 
-Am Ende hast du Claude Code in einem Browser-Terminal, das über dein Claude
-Pro/Max-Abo läuft und auf deine GitHub-Repos zugreifen kann. Deine Tokens
-liegen nur in Railway; Claude Code kann sie benutzen, aber nicht sehen.
+Am Ende hast du ein vollwertiges **Cloud-Entwicklungsstudio im Browser** mit einer modernen Weboberfläche, angetrieben vom **Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)**. Du kannst direkt im Browser an deinen Projekten in der Cloud arbeiten, Aufgaben an den Claude-Agenten übergeben, Diffs prüfen und Änderungen per Knopfdruck committen und auf GitHub pushen.
+
+Deine Tokens (Claude API / Abo und GitHub Token) liegen sicher in Railway. Der Agent kann sie nutzen, aber nicht auslesen oder leaken.
+
+---
+
+## Highlights der Weboberfläche
+
+- 🤖 **Autonomer Claude Agent:** Ausgeführt via Claude Agent SDK mit Tool-Use (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`).
+- 📁 **Repository-Manager:** Bestehende Repositories auswählen oder neue Repos direkt von GitHub klonen (Authentifizierung erfolgt automatisch über das Gateway).
+- 🔍 **Live Git-Diff:** Vor jedem Commit alle Dateiänderungen farblich hervorgehoben überprüfen.
+- ✨ **KI-Commit-Message:** Automatisch treffende Conventional-Commit-Nachrichten aus dem Diff generieren lassen.
+- 🚀 **Commit & Push:** Mit einem Klick committen und direkt auf GitHub pushen.
+- 💻 **Integrierter Cloud-Terminal:** Beliebige Shell-Befehle (`npm test`, `git log`, etc.) direkt im Projektverzeichnis ausführen.
+
+---
 
 Es gibt drei Wege:
 
@@ -18,10 +31,11 @@ Es gibt drei Wege:
 | Was | Wofür | Wo bekommst du es | Gültig | Landet in |
 |---|---|---|---|---|
 | **Railway-Login** | Das Skript richtet Railway für dich ein | `railway login` (Browser). Kein Token nötig | bis Logout | bleibt auf deinem Rechner |
-| **Claude-Abo-Token** | Claude Code läuft über dein Pro/Max-Abo | `claude setup-token` auf deinem Rechner | 1 Jahr | Railway-Variable `CLAUDE_CODE_OAUTH_TOKEN` |
+| **Claude-Abo-Token** | Claude läuft über dein Pro/Max-Abo | `claude setup-token` auf deinem Rechner | 1 Jahr | Railway-Variable `CLAUDE_CODE_OAUTH_TOKEN` |
 | *oder* **Claude-API-Key** | Abrechnung pro Nutzung statt Abo | [console.anthropic.com](https://console.anthropic.com) → API Keys | bis du ihn löschst | `ANTHROPIC_API_KEY` |
 | **GitHub-Token** (fine-grained) | `git clone`/`push`, Pull Requests | [GitHub → neuer Token](https://github.com/settings/personal-access-tokens/new) | wählst du selbst | `GITHUB_TOKEN` |
-| **Terminal-Passwort** | Login ins Browser-Terminal | erzeugt das Skript für dich | bis du es änderst | `TERMINAL_PASSWORD` |
+| **Panel-Benutzername** | Login-Name im Web-Studio | fragt das Skript, Standard `dev` | bis du ihn änderst | `TERMINAL_USERNAME` |
+| **Terminal-Passwort** | Login ins Web-Studio | erzeugt das Skript für dich | bis du es änderst | `TERMINAL_PASSWORD` |
 | *optional:* **Railway-API-Token** | Nur für Automatisierung (CI) | Railway → Account Settings → Tokens | bis du ihn löschst | Umgebungsvariable `RAILWAY_API_TOKEN` beim Skriptaufruf. **Nicht** in die Box! |
 
 Einstellungen für den **GitHub-Token**:
@@ -134,7 +148,8 @@ Das Skript führt dich durch diese Schritte:
    Den angezeigten Token fügst du ein. Die Eingabe ist unsichtbar.
 5. **GitHub:** zeigt den Link und die nötigen Rechte, du fügst den Token ein.
    Er wird sofort bei GitHub geprüft.
-6. Erzeugt ein zufälliges Terminal-Passwort.
+6. Fragt den Login-Namen fürs Panel (Vorschlag `dev`, Enter übernimmt ihn) und
+   erzeugt ein zufälliges Terminal-Passwort.
 7. Speichert alles als Railway-Variablen, legt das Volume (`/home/dev`) und die
    Adresse an, verbindet das GitHub-Repo und startet den Build.
 8. Wartet, bis die Box erreichbar ist, und zeigt **Adresse, Benutzer und
@@ -191,8 +206,8 @@ Alle Variablen stehen oben im Skript.
 
 ## Ausprobieren
 
-Die Adresse öffnen und anmelden: Benutzer **`dev`**, Passwort aus dem Skript
-(bzw. dein `TERMINAL_PASSWORD`). Im Terminal:
+Die Adresse öffnen und anmelden: Benutzer aus dem Skript (Standard **`dev`**),
+Passwort aus dem Skript (bzw. dein `TERMINAL_PASSWORD`). Im Terminal:
 
 ```bash
 claude

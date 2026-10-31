@@ -42,9 +42,12 @@ RUN userdel -r ubuntu 2>/dev/null || true \
  && useradd --create-home --uid 1000 --shell /bin/bash dev
 
 COPY gateway/ /opt/gateway/
+COPY app/ /opt/app/
+RUN cd /opt/app && npm install --omit=dev && npm cache clean --force
+
 COPY rootfs/ /
 RUN chmod 755 /usr/local/bin/entrypoint.sh \
- && chmod -R a+rX /opt/gateway /etc/claude-code /etc/profile.d/devenv.sh /etc/tmux.conf
+ && chmod -R a+rX /opt/gateway /opt/app /etc/claude-code /etc/profile.d/devenv.sh /etc/tmux.conf
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]

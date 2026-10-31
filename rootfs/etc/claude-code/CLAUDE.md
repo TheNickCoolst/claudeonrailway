@@ -11,7 +11,7 @@ You are running inside a cloud dev container on Railway, as the Linux user `dev`
 You do not have access to API keys or tokens. That is on purpose. A local
 gateway at `$GATEWAY_URL` (http://127.0.0.1:8787) adds them to requests for you:
 
-- **Claude API**: already set up for Claude Code (`ANTHROPIC_BASE_URL`).
+- **Claude API**: already set up for the Claude Agent SDK and Claude API (`ANTHROPIC_BASE_URL`).
 - **git + GitHub**: `git clone / fetch / pull / push https://github.com/OWNER/REPO`
   works normally. Git rewrites GitHub URLs to the gateway, which adds the token.
 - **GitHub REST API**: call `$GATEWAY_URL/github-api/...` instead of
