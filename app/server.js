@@ -26,6 +26,16 @@ const HOST = '127.0.0.1';
 // Active agent runs for aborting
 const activeTasks = new Map();
 
+function resolveSafeProjectPath(projectParam) {
+  if (!projectParam) return DEFAULT_PROJECTS_DIR;
+  const resolved = path.resolve(DEFAULT_PROJECTS_DIR, projectParam);
+  const relative = path.relative(DEFAULT_PROJECTS_DIR, resolved);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return null;
+  }
+  return resolved;
+}
+
 function sendJson(res, statusCode, data) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
@@ -114,18 +124,18 @@ const server = http.createServer(async (req, res) => {
 
     // Projects: status
     if (pathname === '/api/projects/status' && req.method === 'GET') {
-      const projectPath = url.searchParams.get('project');
-      if (!projectPath) return sendError(res, 400, 'Project parameter missing');
-      const resolvedPath = path.resolve(DEFAULT_PROJECTS_DIR, projectPath);
+      const projectParam = url.searchParams.get('project');
+      const resolvedPath = resolveSafeProjectPath(projectParam);
+      if (!resolvedPath) return sendError(res, 400, 'Invalid or missing project parameter');
       const status = await getProjectStatus(resolvedPath);
       return sendJson(res, 200, status);
     }
 
     // Projects: diff
     if (pathname === '/api/projects/diff' && req.method === 'GET') {
-      const projectPath = url.searchParams.get('project');
-      if (!projectPath) return sendError(res, 400, 'Project parameter missing');
-      const resolvedPath = path.resolve(DEFAULT_PROJECTS_DIR, projectPath);
+      const projectParam = url.searchParams.get('project');
+      const resolvedPath = resolveSafeProjectPath(projectParam);
+      if (!resolvedPath) return sendError(res, 400, 'Invalid or missing project parameter');
       const diffData = await getProjectDiff(resolvedPath);
       return sendJson(res, 200, diffData);
     }
@@ -133,10 +143,10 @@ const server = http.createServer(async (req, res) => {
     // Projects: commit & push
     if (pathname === '/api/projects/commit-push' && req.method === 'POST') {
       const body = await parseBody(req);
-      if (!body.project) return sendError(res, 400, 'Project parameter missing');
+      const resolvedPath = resolveSafeProjectPath(body.project);
+      if (!resolvedPath) return sendError(res, 400, 'Invalid or missing project parameter');
       if (!body.message) return sendError(res, 400, 'Commit message required');
 
-      const resolvedPath = path.resolve(DEFAULT_PROJECTS_DIR, body.project);
       const result = await commitAndPush({
         projectPath: resolvedPath,
         message: body.message,
@@ -148,8 +158,8 @@ const server = http.createServer(async (req, res) => {
     // Projects: AI commit message generation
     if (pathname === '/api/projects/ai-commit-message' && req.method === 'POST') {
       const body = await parseBody(req);
-      if (!body.project) return sendError(res, 400, 'Project parameter missing');
-      const resolvedPath = path.resolve(DEFAULT_PROJECTS_DIR, body.project);
+      const resolvedPath = resolveSafeProjectPath(body.project);
+      if (!resolvedPath) return sendError(res, 400, 'Invalid or missing project parameter');
       const diffData = await getProjectDiff(resolvedPath);
 
       if (!diffData.hasChanges) {
@@ -165,7 +175,7 @@ const server = http.createServer(async (req, res) => {
         const prompt = `Based on the following git diff, generate a concise, professional conventional commit message (e.g. "feat(auth): add login token check" or "fix(server): handle null pointer in routes"). Return ONLY the single commit message, nothing else:\n\n${diffData.diff.slice(0, 8000)}`;
 
         const response = await client.messages.create({
-          model: 'claude-3-7-sonnet-20250219',
+          model: process.env.ANTHROPIC_MODEL || 'claude-3-7-sonnet-20250219',
           max_tokens: 150,
           messages: [{ role: 'user', content: prompt }],
         });
@@ -185,9 +195,8 @@ const server = http.createServer(async (req, res) => {
 
       if (!prompt) return sendError(res, 400, 'Prompt required');
 
-      const resolvedCwd = project
-        ? path.resolve(DEFAULT_PROJECTS_DIR, project)
-        : DEFAULT_PROJECTS_DIR;
+      const resolvedCwd = resolveSafeProjectPath(project);
+      if (!resolvedCwd) return sendError(res, 400, 'Invalid project parameter');
 
       // Initialize SSE stream
       res.writeHead(200, {
@@ -250,9 +259,8 @@ const server = http.createServer(async (req, res) => {
       const { command, project } = body;
 
       if (!command) return sendError(res, 400, 'Command required');
-      const resolvedCwd = project
-        ? path.resolve(DEFAULT_PROJECTS_DIR, project)
-        : DEFAULT_PROJECTS_DIR;
+      const resolvedCwd = resolveSafeProjectPath(project);
+      if (!resolvedCwd) return sendError(res, 400, 'Invalid project parameter');
 
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',

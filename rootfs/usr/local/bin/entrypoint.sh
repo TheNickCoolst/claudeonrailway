@@ -80,6 +80,7 @@ dev_env=(
   "COLORTERM=truecolor"
   "NPM_CONFIG_PREFIX=$DEV_HOME/.npm-global"
   "GATEWAY_URL=$GATEWAY_URL"
+  "NODE_PATH=/opt/app/node_modules"
 )
 if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
   # Claude Code talks to the gateway. The token below is a dummy value;
@@ -117,6 +118,9 @@ setpriv --reuid=broker --regid=broker --init-groups -- node /opt/gateway/server.
 pids+=($!)
 
 cd "$DEV_HOME"
+env -i "${dev_env[@]}" setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- \
+  tmux new-session -d -s main -c "$DEV_HOME" /bin/bash 2>/dev/null || true
+
 env -i "${dev_env[@]}" setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- \
   node /opt/app/server.js &
 pids+=($!)

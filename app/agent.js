@@ -16,7 +16,7 @@ export async function runAgentTask({
   cwd,
   onEvent,
   abortController = new AbortController(),
-  model = process.env.ANTHROPIC_MODEL || 'claude-3-7-sonnet-20250219',
+  model = process.env.ANTHROPIC_MODEL,
 }) {
   onEvent({ type: 'start', prompt, cwd });
 
@@ -24,7 +24,6 @@ export async function runAgentTask({
     // Configure options for Claude Agent SDK
     const options = {
       cwd,
-      model,
       abortController,
       permissionMode: 'acceptEdits',
       allowedTools: [
@@ -43,6 +42,7 @@ export async function runAgentTask({
         CLAUDE_AGENT_SDK_CLIENT_APP: 'claude-dev-studio/1.0',
       },
     };
+    if (model) options.model = model;
 
     console.log(`[agent:run] Starting Claude Agent SDK query in ${cwd}...`);
     const q = query({ prompt, options });

@@ -148,7 +148,13 @@ export async function getProjectDiff(projectPath) {
     const files = untrackedRes.stdout.split('\n').filter(Boolean);
     for (const file of files.slice(0, 20)) { // limit preview
       try {
-        const content = await fs.readFile(path.join(projectPath, file), 'utf8');
+        const filePath = path.join(projectPath, file);
+        const stat = await fs.stat(filePath);
+        if (stat.size > 1024 * 1024) {
+          untrackedDiff += `\n--- /dev/null\n+++ b/${file} (file too large for diff preview: ${(stat.size / 1024 / 1024).toFixed(1)}MB)\n`;
+          continue;
+        }
+        const content = await fs.readFile(filePath, 'utf8');
         untrackedDiff += `\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${content.split('\n').length} @@\n`;
         untrackedDiff += content.split('\n').map((l) => `+${l}`).join('\n') + '\n';
       } catch {
@@ -260,7 +266,7 @@ export async function commitAndPush({ projectPath, message, branch }) {
 
   // 4. Push to remote origin
   console.log(`[git:push] Pushing to origin ${targetBranch}...`);
-  const pushRes = await gitExec(['push', 'origin', targetBranch], projectPath);
+  const pushRes = await gitExec(['push', '-u', 'origin', targetBranch], projectPath);
   if (!pushRes.success) {
     return {
       success: false,

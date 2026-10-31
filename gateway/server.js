@@ -373,10 +373,31 @@ const STARTING_PAGE = `<!doctype html><meta charset="utf-8"><meta http-equiv="re
 <title>Starting…</title><body style="font-family:system-ui;background:#111;color:#ddd;padding:2rem">
 <p>Claude Dev Studio is starting. This page reloads by itself.</p></body>`;
 
+function checkAppReady() {
+  return new Promise((resolve) => {
+    const s = net.connect(TTYD_PORT, '127.0.0.1', () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.on('error', () => {
+      s.destroy();
+      resolve(false);
+    });
+  });
+}
+
 function handlePublic(req, res) {
   if (req.url === '/healthz') {
-    res.writeHead(200, { 'content-type': 'text/plain' });
-    return res.end('ok\n');
+    checkAppReady().then((ready) => {
+      if (ready) {
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('ok\n');
+      } else {
+        res.writeHead(503, { 'content-type': 'text/plain', 'retry-after': '1' });
+        res.end('starting\n');
+      }
+    });
+    return;
   }
 
   const basicOk = hasValidBasicAuth(req);
