@@ -1,5 +1,11 @@
 # Claude Dev Studio on Railway (Claude Agent SDK)
 
+[![Tests](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/test.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/test.yml)
+[![Lint](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/lint.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/lint.yml)
+[![Security](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/security.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/security.yml)
+[![Docker Image](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/TheNickCoolst/claudeonrailway/pkgs/container/claudeonrailway)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Your own cloud dev studio: Autonomous AI coding powered by the official
 **Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)** with a modern **Web UI**,
 connected to your GitHub projects and running cheaply on [Railway](https://railway.com).
@@ -29,13 +35,28 @@ they never appear in its environment, its files, or its context. Works with a Cl
 
 ## Features
 
-- 🤖 **Autonomous Claude Agent SDK:** Programmatic multi-turn loop with tool use (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`).
-- 🌐 **Modern Web UI:** Single-page dashboard to chat with the agent, inspect tools live, and control the development flow.
+- 🤖 **Multi-Provider AI Agents:**
+  - 🟣 **Claude (Anthropic):** Powered by the official Claude Agent SDK & Anthropic SDK (Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku, Opus).
+  - 🔵 **Antigravity (Google DeepMind):** Gemini 2.5 Pro & 2.0 Flash with expansive reasoning context via Google AI Studio.
+  - 🟢 **Codex / OpenAI:** GPT-4o, GPT-4o-mini, o3-mini & o1 reasoning models.
+  - 🟠 **OpenCode:** Open-source AI ecosystem with DeepSeek V3, DeepSeek R1, Qwen 2.5 Coder, and local Ollama runtimes.
+  - 🎁 **Freebuff (Free Tier):** 100% free community ad-funded model access without requiring credit cards or subscriptions!
+- 🌐 **Modern Web Studio:** Single-page dashboard to chat with the agents, inspect real-time tool execution cards, and switch models on the fly.
 - 📁 **Cloud Workspace & Projects:** Clone repos from GitHub or switch between projects in `/home/dev/projects`.
 - 🔍 **Live Diff Review:** Inspect all modified, untracked, and deleted files with unified syntax highlighting.
-- ✨ **AI Commit Message Generator:** Auto-generates clean, conventional commit messages from the actual diff.
+- ✨ **Universal AI Commit Message Generator:** Auto-generates clean conventional commit messages from the actual diff with any chosen provider.
 - 🚀 **1-Click Commit & Push:** Stages, commits, and pushes changes back to GitHub through the authenticated gateway proxy.
 - 💻 **Integrated Cloud Terminal:** Run arbitrary bash commands (`npm test`, `git log`, etc.) right from the browser.
+
+## Supported AI Providers & Keys
+
+| Provider | Recommended Models | Environment Variable | Cost / Tier |
+|---|---|---|---|
+| **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go or Claude Pro/Max subscription |
+| **🔵 Antigravity** | Gemini 2.5 Pro, Gemini 2.0 Flash | `ANTIGRAVITY_API_KEY` or `GEMINI_API_KEY` | Free quota on Google AI Studio |
+| **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` or `CODEX_API_KEY` | OpenAI API balance |
+| **🟠 OpenCode** | DeepSeek V3, Qwen 2.5 Coder | `OPENCODE_API_KEY` or `OPENROUTER_API_KEY` | OpenRouter or local Ollama (`OPENCODE_BASE_URL`) |
+| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3 | *(No key required)* or `FREEBUFF_API_KEY` | **100% Free (Ad-Funded)** |
 
 ## How the keys stay hidden
 

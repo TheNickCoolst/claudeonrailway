@@ -1,0 +1,25 @@
+web-ui:
+  - changed-files:
+      - any-glob-to-any-file: 'app/public/**'
+
+agent-sdk:
+  - changed-files:
+      - any-glob-to-any-file: 'app/*.js'
+      - any-glob-to-any-file: 'app/package*.json'
+
+gateway:
+  - changed-files:
+      - any-glob-to-any-file: 'gateway/**'
+
+docker:
+  - changed-files:
+      - any-glob-to-any-file: 'Dockerfile'
+      - any-glob-to-any-file: 'rootfs/**'
+
+ci-cd:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'

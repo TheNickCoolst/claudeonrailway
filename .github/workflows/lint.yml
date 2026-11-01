@@ -1,0 +1,57 @@
+name: Lint & Code Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-code:
+    name: Syntax & Lint Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Validate JavaScript Syntax
+        run: |
+          echo "Checking JavaScript syntax with Node.js..."
+          node --check \
+            app/server.js \
+            app/agent.js \
+            app/git.js \
+            app/terminal.js \
+            gateway/server.js \
+            test/*.js
+          echo "All JavaScript files pass syntax check."
+
+      - name: Validate JSON files
+        run: |
+          echo "Validating JSON files..."
+          node -e '
+            const fs = require("fs");
+            const files = ["app/package.json", "app/package-lock.json"];
+            files.forEach(f => {
+              JSON.parse(fs.readFileSync(f, "utf8"));
+              console.log("Valid JSON:", f);
+            });
+          '
+
+      - name: Lint Shell Scripts (ShellCheck)
+        run: |
+          shellcheck -x \
+            scripts/*.sh \
+            rootfs/usr/local/bin/entrypoint.sh \
+            test/*.sh \
+            test/fake-railway \
+            rootfs/etc/profile.d/devenv.sh

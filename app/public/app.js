@@ -2,9 +2,13 @@
 let activeProject = null;
 let activeTaskId = null;
 let currentEventSource = null;
+let providersCatalog = {};
 
 // DOM Elements
 const projectSelect = document.getElementById('projectSelect');
+const providerSelect = document.getElementById('providerSelect');
+const modelSelect = document.getElementById('modelSelect');
+const activeEnginePill = document.getElementById('activeEnginePill');
 const gitBranchText = document.getElementById('gitBranchText');
 const gitChangesBadge = document.getElementById('gitChangesBadge');
 const gitFilesCount = document.getElementById('gitFilesCount');
@@ -70,6 +74,82 @@ function switchTab(tabId) {
     c.classList.toggle('active', c.id === tabId);
   });
 }
+
+// -----------------------------------------------------------------------------
+// AI Engine & Providers Management
+// -----------------------------------------------------------------------------
+
+async function loadProviders() {
+  try {
+    const res = await fetch('/api/providers');
+    const data = await res.json();
+    providersCatalog = data.providers || {};
+
+    if (!providerSelect) return;
+    providerSelect.innerHTML = '';
+
+    for (const [key, p] of Object.entries(providersCatalog)) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = `${p.icon} ${p.name}`;
+      providerSelect.appendChild(opt);
+    }
+
+    const savedProvider = localStorage.getItem('selected_provider') || 'claude';
+    if (providersCatalog[savedProvider]) {
+      providerSelect.value = savedProvider;
+    }
+
+    updateModelsDropdown();
+  } catch (err) {
+    console.error('Failed to load providers:', err);
+  }
+}
+
+function updateModelsDropdown() {
+  if (!modelSelect || !providerSelect) return;
+  const currentProviderKey = providerSelect.value;
+  const provider = providersCatalog[currentProviderKey];
+  if (!provider) return;
+
+  modelSelect.innerHTML = '';
+  const models = provider.models || [];
+  models.forEach((m) => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    modelSelect.appendChild(opt);
+  });
+
+  const savedModel = localStorage.getItem(`selected_model_${currentProviderKey}`);
+  if (savedModel && models.some((m) => m.id === savedModel)) {
+    modelSelect.value = savedModel;
+  } else if (provider.defaultModel) {
+    modelSelect.value = provider.defaultModel;
+  }
+
+  updateActiveEnginePill();
+}
+
+function updateActiveEnginePill() {
+  if (!activeEnginePill || !providerSelect || !modelSelect) return;
+  const p = providersCatalog[providerSelect.value];
+  if (!p) return;
+  const selectedModelId = modelSelect.value;
+  const modelObj = (p.models || []).find((m) => m.id === selectedModelId);
+  const modelName = modelObj ? modelObj.name.split(' ')[0] : selectedModelId;
+  activeEnginePill.textContent = `${p.icon} ${p.name.split(' ')[0]} · ${modelName}`;
+}
+
+providerSelect?.addEventListener('change', () => {
+  localStorage.setItem('selected_provider', providerSelect.value);
+  updateModelsDropdown();
+});
+
+modelSelect?.addEventListener('change', () => {
+  localStorage.setItem(`selected_model_${providerSelect.value}`, modelSelect.value);
+  updateActiveEnginePill();
+});
 
 // -----------------------------------------------------------------------------
 // Projects & Git Management
@@ -307,7 +387,11 @@ btnAiCommit?.addEventListener('click', async () => {
     const res = await fetch('/api/projects/ai-commit-message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project: activeProject }),
+      body: JSON.stringify({
+        project: activeProject,
+        provider: providerSelect?.value || 'claude',
+        model: modelSelect?.value,
+      }),
     });
     const data = await res.json();
     if (data.commitMessage) {
@@ -436,6 +520,8 @@ async function runTask() {
         prompt,
         project: activeProject,
         taskId: activeTaskId,
+        provider: providerSelect?.value || 'claude',
+        model: modelSelect?.value,
       }),
     });
 
@@ -553,9 +639,20 @@ function appendUserMessage(text) {
 }
 
 function createAssistantBubble() {
+  const currentProviderKey = providerSelect?.value || 'claude';
+  const p = providersCatalog[currentProviderKey] || { name: 'AI Assistant', icon: '🤖' };
+  const currentModel = modelSelect?.value || '';
+
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble assistant';
-  bubble.innerHTML = `<div class="message-text"></div>`;
+  bubble.innerHTML = `
+    <div class="message-meta-tag">
+      <span>${p.icon}</span>
+      <span>${escapeHtml(p.name)}</span>
+      <span class="meta-model">${escapeHtml(currentModel)}</span>
+    </div>
+    <div class="message-text"></div>
+  `;
   chatStream.appendChild(bubble);
   chatStream.scrollTop = chatStream.scrollHeight;
   return bubble;
@@ -644,6 +741,7 @@ function escapeHtml(str) {
 }
 
 // Initial load
-window.addEventListener('DOMContentLoaded', () => {
-  loadProjects();
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadProviders();
+  await loadProjects();
 });
