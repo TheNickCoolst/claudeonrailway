@@ -1,0 +1,6 @@
+name: "Claude On Railway CodeQL Configuration"
+
+query-filters:
+  # The cloud development studio intentionally runs a terminal and workspace tool executor
+  - exclude:
+      id: js/command-line-injection
