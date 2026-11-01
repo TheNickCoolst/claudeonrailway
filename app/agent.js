@@ -1,11 +1,13 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import Anthropic from '@anthropic-ai/sdk';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { runCommand } from './terminal.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const execFileAsync = promisify(execFile);
+const AGENT_SYSTEM_PROMPT =
+  'You are an expert AI software engineer operating in this project repository. ' +
+  'Inspect the code, make precise edits, and run commands to complete the user task. ' +
+  'Explain what you modified clearly once finished.';
 
 /**
  * Multi-Provider Catalog
@@ -165,15 +167,28 @@ const OPENAI_TOOLS = [
  */
 async function executeWorkspaceTool(name, input, cwd) {
   if (name === 'bash') {
-    const cmd = input.command;
-    const { stdout, stderr } = await execFileAsync('bash', ['-c', cmd], {
-      cwd,
-      timeout: 60000,
-      maxBuffer: 5 * 1024 * 1024,
+    const cmd = String(input?.command || '').trim();
+    if (!cmd || cmd.includes('\0')) {
+      return 'Error: Invalid or empty command argument';
+    }
+
+    return new Promise((resolve) => {
+      let stdout = '';
+      let stderr = '';
+      runCommand({
+        command: cmd,
+        cwd,
+        onData: (data) => {
+          if (data.type === 'stdout') stdout += data.data;
+          else if (data.type === 'stderr') stderr += data.data;
+        },
+        onExit: (exit) => {
+          let output = stdout + (stderr ? `\nSTDERR:\n${stderr}` : '');
+          if (!output.trim()) output = `(command finished with code ${exit.code ?? 0})`;
+          resolve(output);
+        },
+      });
     });
-    let output = (stdout || '') + (stderr ? `\nSTDERR:\n${stderr}` : '');
-    if (!output.trim()) output = '(command finished with code 0 and empty output)';
-    return output;
   }
   if (name === 'read_file') {
     const filePath = path.resolve(cwd, input.path);
@@ -191,13 +206,22 @@ async function executeWorkspaceTool(name, input, cwd) {
     return entries.map((e) => `${e.isDirectory() ? '[DIR] ' : '      '}${e.name}`).join('\n');
   }
   if (name === 'grep_search') {
-    const query = input.query || input.pattern || '';
+    const query = String(input.query || input.pattern || '').trim();
+    if (!query) return 'No pattern specified';
     const targetDir = path.resolve(cwd, input.dir || '.');
-    const { stdout } = await execFileAsync('grep', ['-rnI', query, targetDir], {
-      timeout: 15000,
-      maxBuffer: 2 * 1024 * 1024,
-    }).catch((err) => ({ stdout: err.stdout || 'No matches found.' }));
-    return stdout || 'No matches found.';
+    return new Promise((resolve) => {
+      let stdout = '';
+      runCommand({
+        command: `grep -rnI --exclude-dir=.git -- ${JSON.stringify(query)} .`,
+        cwd: targetDir,
+        onData: (data) => {
+          if (data.type === 'stdout') stdout += data.data;
+        },
+        onExit: () => {
+          resolve(stdout.trim() || 'No matches found.');
+        },
+      });
+    });
   }
   throw new Error(`Unknown tool: ${name}`);
 }
@@ -411,9 +435,6 @@ export async function runAnthropicClientLoop({
     },
   ];
 
-  const systemPrompt = `You are an expert AI software engineer operating in directory: ${cwd}.
-Inspect files, make edits, and run commands to complete the task. Explain all changes clearly.`;
-
   const messages = [{ role: 'user', content: prompt }];
   let turns = 0;
   const maxTurns = 20;
@@ -430,7 +451,7 @@ Inspect files, make edits, and run commands to complete the task. Explain all ch
       {
         model,
         max_tokens: 4096,
-        system: systemPrompt,
+        system: AGENT_SYSTEM_PROMPT,
         messages,
         tools,
       },
@@ -499,13 +520,8 @@ export async function runOpenAICompatibleLoop({
   model,
   endpoint,
 }) {
-  const systemPrompt = `You are an expert AI software engineer operating in project directory: ${cwd}.
-Provider: ${providerMeta.name} (${model}).
-Inspect the code, make precise edits, and run commands to complete the user's task.
-Explain what you modified clearly once finished.`;
-
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: AGENT_SYSTEM_PROMPT },
     { role: 'user', content: prompt },
   ];
 
