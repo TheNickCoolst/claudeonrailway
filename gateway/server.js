@@ -204,6 +204,14 @@ function buildRoutes() {
       inject: { authorization: `Bearer ${githubToken}` },
       description: 'GitHub REST API (GITHUB_TOKEN)',
     });
+
+    // GitHub Models (free prototyping tier for GPT-4o, DeepSeek-R1, Llama 3.3 via GITHUB_TOKEN)
+    routes.set('github-models', {
+      target: parseTarget(env.GITHUB_MODELS_UPSTREAM || 'https://models.inference.ai.azure.com', 'github-models'),
+      strip: new Set(['authorization']),
+      inject: { authorization: `Bearer ${githubToken}` },
+      description: 'GitHub Models Free Tier (GITHUB_TOKEN)',
+    });
   }
 
   // Your own routes, e.g.

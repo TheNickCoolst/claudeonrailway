@@ -94,6 +94,8 @@ dev_env=(
   "OPENCODE_API_KEY=managed-by-gateway"
   "FREEBUFF_BASE_URL=$GATEWAY_URL/freebuff/v1"
   "FREEBUFF_API_KEY=managed-by-gateway"
+  "GITHUB_MODELS_BASE_URL=$GATEWAY_URL/github-models"
+  "GITHUB_MODELS_API_KEY=managed-by-gateway"
 )
 # Non-secret settings you want inside the terminal: add them in Railway with a
 # DEVENV_ prefix. DEVENV_NODE_ENV=development becomes NODE_ENV=development.

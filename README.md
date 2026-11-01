@@ -52,11 +52,12 @@ they never appear in its environment, its files, or its context. Works with a Cl
 
 | Provider | Recommended Models | Environment Variable | Cost / Tier |
 |---|---|---|---|
+| **🐙 GitHub Models** | GPT-4o, DeepSeek-R1, Llama 3.3 | Uses your `GITHUB_TOKEN` automatically | **100% Free** (GitHub Prototyping Tier) |
+| **🟠 OpenCode** | OpenRouter Auto, Qwen 2.5 Coder 32B, Gemini 2.0 Flash Exp | `OPENCODE_API_KEY` or `OPENCODE_BASE_URL` | **100% Free** (`:free` Pool & local Ollama) |
+| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3, GLM 4 | *(No key required)* or `FREEBUFF_API_KEY` | **100% Free** (Ad-Funded) |
+| **🔵 Antigravity** | Gemini 2.0 Flash, Gemini Thinking, 1.5 Flash | `ANTIGRAVITY_API_KEY` or `GEMINI_API_KEY` | **100% Free** (1500 req/day on Google AI Studio) |
 | **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go or Claude Pro/Max subscription |
-| **🔵 Antigravity** | Gemini 2.5 Pro, Gemini 2.0 Flash | `ANTIGRAVITY_API_KEY` or `GEMINI_API_KEY` | Free quota on Google AI Studio |
 | **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` or `CODEX_API_KEY` | OpenAI API balance |
-| **🟠 OpenCode** | DeepSeek V3, Qwen 2.5 Coder | `OPENCODE_API_KEY` or `OPENROUTER_API_KEY` | OpenRouter or local Ollama (`OPENCODE_BASE_URL`) |
-| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3 | *(No key required)* or `FREEBUFF_API_KEY` | **100% Free (Ad-Funded)** |
 
 ## How the keys stay hidden
 

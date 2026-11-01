@@ -27,19 +27,68 @@ export const PROVIDERS = {
     ],
     description: 'Autonomous agent loop via official Claude Agent SDK & Anthropic SDK',
   },
+  'github-models': {
+    id: 'github-models',
+    name: 'GitHub Models (Free Tier)',
+    badge: '100% Free',
+    icon: '🐙',
+    defaultModel: 'gpt-4o',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o [Free Tier via GITHUB_TOKEN]' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini [Free Tier via GITHUB_TOKEN]' },
+      { id: 'o3-mini', name: 'o3-mini Reasoning [Free Tier via GITHUB_TOKEN]' },
+      { id: 'DeepSeek-R1', name: 'DeepSeek R1 [Free Tier via GITHUB_TOKEN]' },
+      { id: 'Meta-Llama-3.3-70B-Instruct', name: 'Llama 3.3 70B [Free Tier via GITHUB_TOKEN]' },
+      { id: 'Phi-4', name: 'Phi-4 14B [Free Tier via GITHUB_TOKEN]' },
+    ],
+    description: 'Free prototyping tier provided to all GitHub accounts via GITHUB_TOKEN',
+  },
+  opencode: {
+    id: 'opencode',
+    name: 'OpenCode & OpenRouter Free Tier',
+    badge: 'Free Tier',
+    icon: '🟠',
+    defaultModel: 'openrouter/free',
+    models: [
+      { id: 'openrouter/free', name: '🎯 OpenRouter Auto [100% Free - Auto Best Available]' },
+      { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: '✨ Qwen 2.5 Coder 32B [Free]' },
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', name: '🦙 Llama 3.3 70B Instruct [Free]' },
+      { id: 'google/gemini-2.0-flash-exp:free', name: '⚡ Gemini 2.0 Flash Exp [Free]' },
+      { id: 'mistralai/mistral-small-24b-instruct-2501:free', name: '🌪️ Mistral Small 24B (2025) [Free]' },
+      { id: 'deepseek/deepseek-chat', name: '🧠 DeepSeek V3 (Coding Flagship)' },
+      { id: 'deepseek/deepseek-r1', name: '💡 DeepSeek R1 (Open Reasoning)' },
+      { id: 'ollama/qwen2.5-coder', name: '💻 Ollama Local Model (100% Free & Offline)' },
+    ],
+    description: 'OpenCode ecosystem with built-in free models, OpenRouter free pool, and local Ollama',
+  },
+  freebuff: {
+    id: 'freebuff',
+    name: 'Freebuff (100% Free Pool)',
+    badge: '100% Free',
+    icon: '🎁',
+    defaultModel: 'freebuff-auto',
+    models: [
+      { id: 'freebuff-auto', name: '🎁 Freebuff Auto [100% Free - Ad-Funded Pool]' },
+      { id: 'freebuff-deepseek-v3', name: 'DeepSeek V3 [Freebuff Free]' },
+      { id: 'freebuff-gpt-4o-mini', name: 'GPT-4o Mini [Freebuff Free]' },
+      { id: 'freebuff-glm-4', name: 'GLM 4 9B [Freebuff Free]' },
+    ],
+    description: 'Community ad-funded free AI coding model access without subscriptions or credit cards',
+  },
   antigravity: {
     id: 'antigravity',
-    name: 'Antigravity (Google / Gemini)',
+    name: 'Antigravity (Google / Gemini Free Quota)',
     badge: 'DeepMind',
     icon: '🔵',
     defaultModel: 'gemini-2.0-flash',
     models: [
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Fast & Agentic)' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (State-of-the-Art)' },
+      { id: 'gemini-2.0-flash', name: '⚡ Gemini 2.0 Flash [Free Quota: 1500 Req/Day]' },
+      { id: 'gemini-2.0-flash-thinking-exp-01-21', name: '🧠 Gemini 2.0 Flash Thinking [Free Reasoning]' },
+      { id: 'gemini-1.5-flash', name: '🚀 Gemini 1.5 Flash (1M Context) [Free Tier]' },
+      { id: 'gemini-2.5-pro', name: '👑 Gemini 2.5 Pro (State-of-the-Art)' },
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (2M Context)' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
     ],
-    description: 'Google DeepMind & Gemini API via Antigravity proxy',
+    description: 'Google DeepMind & Gemini API with generous free tier (1500 req/day without card)',
   },
   codex: {
     id: 'codex',
@@ -54,34 +103,6 @@ export const PROVIDERS = {
       { id: 'o1', name: 'o1 (Deep Reasoning)' },
     ],
     description: 'OpenAI Codex & reasoning models via OpenAI tool-calling loop',
-  },
-  opencode: {
-    id: 'opencode',
-    name: 'OpenCode',
-    badge: 'Open Ecosystem',
-    icon: '🟠',
-    defaultModel: 'deepseek/deepseek-chat',
-    models: [
-      { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 (Coding Benchmark)' },
-      { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1 (Open Reasoning)' },
-      { id: 'qwen/qwen-2.5-coder-32b-instruct', name: 'Qwen 2.5 Coder 32B' },
-      { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct' },
-    ],
-    description: 'Open-source coding models & local runtimes (OpenRouter, Ollama, vLLM)',
-  },
-  freebuff: {
-    id: 'freebuff',
-    name: 'Freebuff (Free Tier)',
-    badge: '100% Free',
-    icon: '🎁',
-    defaultModel: 'freebuff-auto',
-    models: [
-      { id: 'freebuff-auto', name: 'Freebuff Auto (Free DeepSeek V3 / GLM-4)' },
-      { id: 'freebuff-deepseek-v3', name: 'DeepSeek V3 (Freebuff Pool)' },
-      { id: 'freebuff-gpt-4o-mini', name: 'GPT-4o Mini (Freebuff Pool)' },
-      { id: 'freebuff-glm-4', name: 'GLM 4 9B (Freebuff Pool)' },
-    ],
-    description: 'Community ad-funded free AI coding model access without subscriptions or credit cards',
   },
 };
 
@@ -259,6 +280,8 @@ export async function runAgentTask({
   let endpoint = '';
   if (normProvider === 'antigravity') {
     endpoint = process.env.ANTIGRAVITY_BASE_URL || 'http://127.0.0.1:8787/antigravity';
+  } else if (normProvider === 'github-models') {
+    endpoint = process.env.GITHUB_MODELS_BASE_URL || 'http://127.0.0.1:8787/github-models';
   } else if (normProvider === 'codex' || normProvider === 'openai') {
     endpoint = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8787/openai/v1';
   } else if (normProvider === 'opencode') {
@@ -679,6 +702,8 @@ export async function generateAiCommitMessage({
   let endpoint = '';
   if (normProvider === 'antigravity') {
     endpoint = process.env.ANTIGRAVITY_BASE_URL || 'http://127.0.0.1:8787/antigravity';
+  } else if (normProvider === 'github-models') {
+    endpoint = process.env.GITHUB_MODELS_BASE_URL || 'http://127.0.0.1:8787/github-models';
   } else if (normProvider === 'codex' || normProvider === 'openai') {
     endpoint = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8787/openai/v1';
   } else if (normProvider === 'opencode') {
