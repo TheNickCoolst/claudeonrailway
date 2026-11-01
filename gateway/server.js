@@ -124,7 +124,64 @@ function buildRoutes() {
         ? 'Claude API (ANTHROPIC_API_KEY)'
         : 'Claude API (CLAUDE_CODE_OAUTH_TOKEN)',
     });
+  } else {
+    routes.set('anthropic', {
+      target: parseTarget(env.ANTHROPIC_UPSTREAM || 'https://api.anthropic.com', 'anthropic'),
+      strip: new Set(['authorization', 'x-api-key']),
+      inject: {},
+      description: 'Claude API (key not configured)',
+    });
   }
+
+  // Antigravity (Google DeepMind / Gemini API)
+  // Supports ANTIGRAVITY_API_KEY or GEMINI_API_KEY
+  const antigravityKey = secret('ANTIGRAVITY_API_KEY') || secret('GEMINI_API_KEY');
+  routes.set('antigravity', {
+    target: parseTarget(
+      env.ANTIGRAVITY_UPSTREAM || 'https://generativelanguage.googleapis.com/v1beta/openai',
+      'antigravity'
+    ),
+    strip: new Set(['authorization', 'x-goog-api-key']),
+    inject: antigravityKey ? { authorization: `Bearer ${antigravityKey}` } : {},
+    description: antigravityKey
+      ? 'Antigravity / Gemini API (ANTIGRAVITY_API_KEY / GEMINI_API_KEY)'
+      : 'Antigravity API (key not configured)',
+  });
+
+  // OpenAI / Codex API
+  // Supports OPENAI_API_KEY or CODEX_API_KEY
+  const openaiKey = secret('OPENAI_API_KEY') || secret('CODEX_API_KEY');
+  routes.set('openai', {
+    target: parseTarget(env.OPENAI_UPSTREAM || 'https://api.openai.com', 'openai'),
+    strip: new Set(['authorization']),
+    inject: openaiKey ? { authorization: `Bearer ${openaiKey}` } : {},
+    description: openaiKey
+      ? 'OpenAI / Codex API (OPENAI_API_KEY / CODEX_API_KEY)'
+      : 'OpenAI API (key not configured)',
+  });
+
+  // OpenCode (OpenCode Zen / OpenRouter / Ollama / local LLMs)
+  // Supports OPENCODE_API_KEY or OPENROUTER_API_KEY
+  const opencodeKey = secret('OPENCODE_API_KEY') || secret('OPENROUTER_API_KEY');
+  const opencodeTarget = env.OPENCODE_UPSTREAM || env.OPENCODE_BASE_URL || 'https://openrouter.ai/api';
+  routes.set('opencode', {
+    target: parseTarget(opencodeTarget, 'opencode'),
+    strip: new Set(['authorization']),
+    inject: opencodeKey ? { authorization: `Bearer ${opencodeKey}` } : {},
+    description: opencodeKey
+      ? `OpenCode API (${opencodeTarget})`
+      : `OpenCode API (${opencodeTarget}, key not configured)`,
+  });
+
+  // Freebuff (Free ad-supported AI coding model ecosystem / freebuff2api)
+  const freebuffKey = secret('FREEBUFF_API_KEY') || secret('FREEBUFF_TOKEN') || 'freebuff-free-tier';
+  const freebuffTarget = env.FREEBUFF_UPSTREAM || env.FREEBUFF_BASE_URL || 'https://api.freebuff.com';
+  routes.set('freebuff', {
+    target: parseTarget(freebuffTarget, 'freebuff'),
+    strip: new Set(['authorization']),
+    inject: { authorization: `Bearer ${freebuffKey}` },
+    description: `Freebuff AI (${freebuffTarget})`,
+  });
 
   // GitHub over git's HTTPS protocol (clone / fetch / push).
   // Only git endpoints are allowed, so the token can't be used for anything else on github.com.
@@ -204,6 +261,22 @@ const ERROR_HINTS = {
     401: 'GitHub rejected GITHUB_TOKEN (expired or wrong?)',
     403: 'GITHUB_TOKEN has no access to this repo (check the token\'s repositories and permissions)',
     404: 'repo not found, or GITHUB_TOKEN has no access to it',
+  },
+  antigravity: {
+    401: 'Antigravity / Gemini rejected the API key. Set ANTIGRAVITY_API_KEY or GEMINI_API_KEY in Railway variables.',
+    403: 'Antigravity / Gemini permission denied. Ensure your API key has generative language access enabled.',
+    429: 'Antigravity / Gemini quota limit reached. Check Google AI Studio rate limits.',
+  },
+  openai: {
+    401: 'OpenAI / Codex API key rejected. Set OPENAI_API_KEY or CODEX_API_KEY in Railway variables.',
+    429: 'OpenAI rate limit or quota exceeded. Check billing credits at platform.openai.com.',
+  },
+  opencode: {
+    401: 'OpenCode API key rejected. Set OPENCODE_API_KEY or OPENROUTER_API_KEY in Railway variables.',
+    429: 'OpenCode rate limit reached.',
+  },
+  freebuff: {
+    429: 'Freebuff daily pool limit reached. Freebuff quota resets daily, or configure your own upstream proxy.',
   },
 };
 

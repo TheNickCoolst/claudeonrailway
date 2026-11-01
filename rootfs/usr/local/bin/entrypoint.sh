@@ -81,20 +81,20 @@ dev_env=(
   "NPM_CONFIG_PREFIX=$DEV_HOME/.npm-global"
   "GATEWAY_URL=$GATEWAY_URL"
   "NODE_PATH=/opt/app/node_modules"
+  "DEV_PROJECTS_DIR=$DEV_HOME/projects"
+  "APP_PORT=$TTYD_PORT"
+  "ANTHROPIC_BASE_URL=$GATEWAY_URL/anthropic"
+  "ANTHROPIC_AUTH_TOKEN=managed-by-gateway"
+  "ANTHROPIC_API_KEY=managed-by-gateway"
+  "ANTIGRAVITY_BASE_URL=$GATEWAY_URL/antigravity"
+  "ANTIGRAVITY_API_KEY=managed-by-gateway"
+  "OPENAI_BASE_URL=$GATEWAY_URL/openai/v1"
+  "OPENAI_API_KEY=managed-by-gateway"
+  "OPENCODE_BASE_URL=$GATEWAY_URL/opencode/v1"
+  "OPENCODE_API_KEY=managed-by-gateway"
+  "FREEBUFF_BASE_URL=$GATEWAY_URL/freebuff/v1"
+  "FREEBUFF_API_KEY=managed-by-gateway"
 )
-if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
-  # Claude Code talks to the gateway. The token below is a dummy value;
-  # the gateway replaces it with the real key on the way out.
-  dev_env+=(
-    "ANTHROPIC_BASE_URL=$GATEWAY_URL/anthropic"
-    "ANTHROPIC_AUTH_TOKEN=managed-by-gateway"
-    "ANTHROPIC_API_KEY=managed-by-gateway"
-    "DEV_PROJECTS_DIR=$DEV_HOME/projects"
-    "APP_PORT=$TTYD_PORT"
-  )
-else
-  log "NOTE: neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set; Claude SDK will ask you to configure credentials."
-fi
 # Non-secret settings you want inside the terminal: add them in Railway with a
 # DEVENV_ prefix. DEVENV_NODE_ENV=development becomes NODE_ENV=development.
 for name in $(compgen -e); do

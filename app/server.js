@@ -12,9 +12,8 @@ import {
   commitAndPush,
   DEFAULT_PROJECTS_DIR,
 } from './git.js';
-import { runAgentTask } from './agent.js';
+import { runAgentTask, generateAiCommitMessage, PROVIDERS } from './agent.js';
 import { runCommand } from './terminal.js';
-import Anthropic from '@anthropic-ai/sdk';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,6 +154,14 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, result.success ? 200 : 400, result);
     }
 
+    // Providers list & configuration
+    if (pathname === '/api/providers' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        providers: PROVIDERS,
+        defaultProvider: 'claude',
+      });
+    }
+
     // Projects: AI commit message generation
     if (pathname === '/api/projects/ai-commit-message' && req.method === 'POST') {
       const body = await parseBody(req);
@@ -167,20 +174,11 @@ const server = http.createServer(async (req, res) => {
       }
 
       try {
-        const client = new Anthropic({
-          baseURL: process.env.ANTHROPIC_BASE_URL || 'http://127.0.0.1:8787/anthropic',
-          apiKey: process.env.ANTHROPIC_API_KEY || 'managed-by-gateway',
+        const commitMessage = await generateAiCommitMessage({
+          diff: diffData.diff,
+          provider: body.provider,
+          model: body.model,
         });
-
-        const prompt = `Based on the following git diff, generate a concise, professional conventional commit message (e.g. "feat(auth): add login token check" or "fix(server): handle null pointer in routes"). Return ONLY the single commit message, nothing else:\n\n${diffData.diff.slice(0, 8000)}`;
-
-        const response = await client.messages.create({
-          model: process.env.ANTHROPIC_MODEL || 'claude-3-7-sonnet-20250219',
-          max_tokens: 150,
-          messages: [{ role: 'user', content: prompt }],
-        });
-
-        const commitMessage = response.content[0]?.text?.trim() || 'chore: update project files';
         return sendJson(res, 200, { commitMessage });
       } catch (err) {
         console.error('[server:ai-commit] Error:', err);
@@ -191,7 +189,13 @@ const server = http.createServer(async (req, res) => {
     // Agent: run task with Server-Sent Events (SSE)
     if (pathname === '/api/agent/stream' && req.method === 'POST') {
       const body = await parseBody(req);
-      const { prompt, project, taskId = `task-${Date.now()}` } = body;
+      const {
+        prompt,
+        project,
+        taskId = `task-${Date.now()}`,
+        provider = 'claude',
+        model,
+      } = body;
 
       if (!prompt) return sendError(res, 400, 'Prompt required');
 
@@ -225,6 +229,8 @@ const server = http.createServer(async (req, res) => {
           cwd: resolvedCwd,
           abortController,
           onEvent: sendEvent,
+          provider,
+          model,
         });
       } catch (err) {
         sendEvent({ type: 'error', error: err.message });

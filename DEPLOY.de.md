@@ -1,5 +1,11 @@
 # Auf Railway deployen, mit dem Claude Agent SDK & Web-Studio
 
+[![Tests](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/test.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/test.yml)
+[![Lint](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/lint.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/lint.yml)
+[![Security](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/security.yml/badge.svg)](https://github.com/TheNickCoolst/claudeonrailway/actions/workflows/security.yml)
+[![Docker Image](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/TheNickCoolst/claudeonrailway/pkgs/container/claudeonrailway)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Am Ende hast du ein vollwertiges **Cloud-Entwicklungsstudio im Browser** mit einer modernen Weboberfläche, angetrieben vom **Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)**. Du kannst direkt im Browser an deinen Projekten in der Cloud arbeiten, Aufgaben an den Claude-Agenten übergeben, Diffs prüfen und Änderungen per Knopfdruck committen und auf GitHub pushen.
 
 Deine Tokens (Claude API / Abo und GitHub Token) liegen sicher in Railway. Der Agent kann sie nutzen, aber nicht auslesen oder leaken.
@@ -8,12 +14,31 @@ Deine Tokens (Claude API / Abo und GitHub Token) liegen sicher in Railway. Der A
 
 ## Highlights der Weboberfläche
 
-- 🤖 **Autonomer Claude Agent:** Ausgeführt via Claude Agent SDK mit Tool-Use (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`).
+- 🤖 **Multi-Provider KI-Entwicklung:**
+  - 🟣 **Claude (Anthropic):** Claude Agent SDK & Anthropic SDK (Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku)
+  - 🔵 **Antigravity (Google DeepMind):** Gemini 2.5 Pro & Gemini 2.0 Flash mit enormen Kontextfenstern
+  - 🟢 **Codex / OpenAI:** GPT-4o, o3-mini & Codex Reasoning
+  - 🟠 **OpenCode:** DeepSeek V3/R1, Qwen 2.5 Coder & freie Open-Source Modelle
+  - 🎁 **Freebuff (Free Tier):** 100% kostenlose, werbefinanzierte Community-Modelle ohne Abo oder Kreditkarte!
 - 📁 **Repository-Manager:** Bestehende Repositories auswählen oder neue Repos direkt von GitHub klonen (Authentifizierung erfolgt automatisch über das Gateway).
 - 🔍 **Live Git-Diff:** Vor jedem Commit alle Dateiänderungen farblich hervorgehoben überprüfen.
-- ✨ **KI-Commit-Message:** Automatisch treffende Conventional-Commit-Nachrichten aus dem Diff generieren lassen.
+- ✨ **KI-Commit-Message:** Automatisch treffende Conventional-Commit-Nachrichten aus dem Diff generieren lassen (funktioniert mit jedem gewählten Provider!).
 - 🚀 **Commit & Push:** Mit einem Klick committen und direkt auf GitHub pushen.
 - 💻 **Integrierter Cloud-Terminal:** Beliebige Shell-Befehle (`npm test`, `git log`, etc.) direkt im Projektverzeichnis ausführen.
+
+---
+
+## Unterstützte KI-Provider & Environment-Variablen
+
+Du kannst einen oder mehrere Provider in den Railway Environment-Variablen hinterlegen:
+
+| Provider | Modell-Beispiele | Benötigte Railway-Variable | Kostenlos / Free Tier? |
+|---|---|---|---|
+| **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` *oder* `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go / Pro-Abo |
+| **🔵 Antigravity (Google)** | Gemini 2.5 Pro, 2.0 Flash | `ANTIGRAVITY_API_KEY` *oder* `GEMINI_API_KEY` | Kostenloses Kontingent bei Google AI Studio |
+| **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` *oder* `CODEX_API_KEY` | OpenAI API Guthaben |
+| **🟠 OpenCode** | DeepSeek V3, Qwen 2.5 Coder | `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` | OpenRouter / Ollama lokal |
+| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3 | *(Kein Key nötig!)* oder `FREEBUFF_API_KEY` | **100% Kostenlos (Werbefinanziert)** |
 
 ---
 
