@@ -42,7 +42,7 @@ chmod +x "$WORK/bin/claude"
 run_setup() { # STATE_DIR [env assignments...] -- [script args]
   local state=$1; shift
   (cd "$WORK" && env -u GITHUB_TOKEN -u ANTHROPIC_API_KEY -u CLAUDE_CODE_OAUTH_TOKEN -u TERMINAL_PASSWORD \
-    -u GIT_USER_NAME -u GIT_USER_EMAIL \
+    -u TERMINAL_USERNAME -u GIT_USER_NAME -u GIT_USER_EMAIL \
     RAILWAY_BIN="$ROOT/test/fake-railway" FAKE_STATE="$state" FAKE_URL="http://127.0.0.1:$PORT" \
     SETUP_GITHUB_API="http://127.0.0.1:$PORT" SETUP_ANTHROPIC_API="http://127.0.0.1:$PORT" \
     SETUP_REPO=octo/demo SETUP_BRANCH=main SETUP_WAIT_SECONDS=20 PATH="$WORK/bin:$PATH" \
@@ -61,6 +61,8 @@ check "service created"                 '[ -e "$S1/service_claude-code" ]'
 check "subscription token saved, trimmed" '[ "$(var "$S1" CLAUDE_CODE_OAUTH_TOKEN)" = sk-ant-oat01-TESTSECRET ]'
 check "GitHub token saved"              '[ "$(var "$S1" GITHUB_TOKEN)" = ghp_TESTSECRET ]'
 check "random 32-char password saved"   '[[ "$(var "$S1" TERMINAL_PASSWORD)" =~ ^[A-Za-z0-9]{32}$ ]]'
+check "default login name saved"       '[ "$(var "$S1" TERMINAL_USERNAME)" = dev ]'
+check "login name shown at the end"    '[[ "$out1" == *"User:      dev"* ]]'
 check "git author saved"                '[ "$(var "$S1" GIT_USER_NAME)" = "Test User" ] && [ "$(var "$S1" GIT_USER_EMAIL)" = test@example.com ]'
 check "volume at /home/dev"             '[ "$(cat "$S1/volume")" = /home/dev ]'
 check "domain on port 8080"             '[ "$(cat "$S1/domain_port")" = port=8080 ]'
@@ -80,6 +82,7 @@ check "service reused"                  '[ "$(grep -c "^add" "$S1/argv.log")" -e
 check "API key checked and saved"       '[[ "$out2" == *"API key works"* ]] && [ "$(var "$S1" ANTHROPIC_API_KEY)" = sk-ant-api03-TESTSECRET ]'
 check "old subscription token removed"  '[ ! -e "$S1/vars/CLAUDE_CODE_OAUTH_TOKEN" ]'
 check "password kept"                   '[ "$(var "$S1" TERMINAL_PASSWORD)" = "$pw_before" ] && [[ "$out2" == *"Password:  unchanged"* ]]'
+check "login name kept"                '[ "$(var "$S1" TERMINAL_USERNAME)" = dev ] && [[ "$out2" == *"User:      unchanged"* ]]'
 check "GitHub token kept"               '[ "$(var "$S1" GITHUB_TOKEN)" = ghp_TESTSECRET ]'
 check "existing volume accepted"        '[[ "$out2" == *"volume already exists"* ]]'
 check "existing domain reused"          '[[ "$out2" == *"http://127.0.0.1:$PORT"* ]]'
@@ -105,6 +108,7 @@ answers = [  # (prompt text to wait for, what to type)
     ("Run `claude setup-token` now?", "y"),
     ("Paste the subscription token (hidden)", "  sk-ant-oat01-PTYSECRET  "),
     ("Paste the GitHub token (hidden, empty = skip)", "ghp_TESTSECRET"),
+    ("Login name for the web terminal [dev]", "boxuser"),
     ("Name: ", "Pty User"),  # no default: the test hides this machine's git config
     ("Email: ", "pty@example.com"),
     ("Apply now? [Y/n]", ""),
@@ -145,6 +149,7 @@ PY
 check "custom service name used"        '[ -e "$S4/service_my-box" ]'
 check "token from setup-token saved"    '[ "$(var "$S4" CLAUDE_CODE_OAUTH_TOKEN)" = sk-ant-oat01-PTYSECRET ]'
 check "GitHub token checked and saved"  '[[ "$out4" == *"@tester"* ]] && [ "$(var "$S4" GITHUB_TOKEN)" = ghp_TESTSECRET ]'
+check "typed login name saved"        '[ "$(var "$S4" TERMINAL_USERNAME)" = boxuser ]'
 check "typed git author saved"          '[ "$(var "$S4" GIT_USER_NAME)" = "Pty User" ]'
 check "pasted tokens not echoed"        '[[ "$out4" != *"ghp_TESTSECRET"* ]]'
 check "deploy started and up"           '[ -e "$S4/deployed" ] && [[ "$out4" == *"it'"'"'s up"* ]]'
@@ -179,6 +184,13 @@ S7="$WORK/state7"
 out7="$(run_template "$S7" SETUP_IMAGE=ghcr.io/octo/demo:latest FAKE_MULTI_WORKSPACE=1 SETUP_WORKSPACE=team)" \
   && pass "script finished" || { fail "script finished"; echo "$out7"; }
 check "project created in that workspace" '[ "$(cat "$S7/workspace")" = team ]'
+
+echo "== 8. Bad panel username: stops before saving variables"
+S8="$WORK/state8"
+if out8="$(run_setup "$S8" CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-TESTSECRET GITHUB_TOKEN=ghp_TESTSECRET \
+  TERMINAL_USERNAME='bad:name' "$ROOT/scripts/setup-railway.sh" --yes 2>&1)"; then fail "script stopped"; else pass "script stopped"; fi
+check "explains the login name"        '[[ "$out8" == *"login name must"* ]]'
+check "no variables saved"             '[ -z "$(ls -A "$S8/vars" 2>/dev/null)" ]'
 
 if ((FAILED)); then echo "Some checks failed."; exit 1; fi
 echo "All setup script checks passed."

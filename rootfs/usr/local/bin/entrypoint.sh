@@ -80,6 +80,7 @@ dev_env=(
   "COLORTERM=truecolor"
   "NPM_CONFIG_PREFIX=$DEV_HOME/.npm-global"
   "GATEWAY_URL=$GATEWAY_URL"
+  "NODE_PATH=/opt/app/node_modules"
 )
 if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
   # Claude Code talks to the gateway. The token below is a dummy value;
@@ -87,9 +88,12 @@ if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
   dev_env+=(
     "ANTHROPIC_BASE_URL=$GATEWAY_URL/anthropic"
     "ANTHROPIC_AUTH_TOKEN=managed-by-gateway"
+    "ANTHROPIC_API_KEY=managed-by-gateway"
+    "DEV_PROJECTS_DIR=$DEV_HOME/projects"
+    "APP_PORT=$TTYD_PORT"
   )
 else
-  log "NOTE: neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set; Claude Code will ask you to log in."
+  log "NOTE: neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is set; Claude SDK will ask you to configure credentials."
 fi
 # Non-secret settings you want inside the terminal: add them in Railway with a
 # DEVENV_ prefix. DEVENV_NODE_ENV=development becomes NODE_ENV=development.
@@ -114,14 +118,11 @@ setpriv --reuid=broker --regid=broker --init-groups -- node /opt/gateway/server.
 pids+=($!)
 
 cd "$DEV_HOME"
-env -i "${dev_env[@]}" setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- ttyd \
-  --interface lo \
-  --port "$TTYD_PORT" \
-  --writable \
-  --client-option titleFixed="Claude Code" \
-  --client-option fontSize=15 \
-  --client-option disableLeaveAlert=true \
-  tmux new-session -A -s main -c "$DEV_HOME" &
+env -i "${dev_env[@]}" setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- \
+  tmux new-session -d -s main -c "$DEV_HOME" /bin/bash 2>/dev/null || true
+
+env -i "${dev_env[@]}" setpriv --reuid="$DEV_USER" --regid="$DEV_USER" --init-groups -- \
+  node /opt/app/server.js &
 pids+=($!)
 
 log "Ready. Open your Railway URL and log in as \"${TERMINAL_USERNAME:-dev}\"."

@@ -1,11 +1,14 @@
-# Claude Code on Railway
+# Claude Dev Studio on Railway (Claude Agent SDK)
 
-Your own cloud dev box: Claude Code in a browser terminal, connected to your
-GitHub projects, running cheaply on [Railway](https://railway.com).
+Your own cloud dev studio: Autonomous AI coding powered by the official
+**Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)** with a modern **Web UI**,
+connected to your GitHub projects and running cheaply on [Railway](https://railway.com).
 
-Your API keys live in Railway variables. **Claude Code can use them, but it
-can't see them**: they never appear in its environment, its files or its context.
-Works with a Claude API key or your Claude Pro/Max subscription.
+Work on your codebases directly from the browser: Claude explores code, edits files,
+runs tests, and lets you review git diffs and commit & push back to GitHub with one click.
+
+Your API keys live securely in Railway variables. **Claude can use them, but cannot see or leak them**:
+they never appear in its environment, its files, or its context. Works with a Claude API key or your Claude Pro/Max subscription.
 
 🇩🇪 **Deutsche Schritt-für-Schritt-Anleitung: [DEPLOY.de.md](DEPLOY.de.md)**
 
@@ -14,8 +17,8 @@ Works with a Claude API key or your Claude Pro/Max subscription.
                                   │  checks your password
                                   │  holds ALL your secrets
                                   ▼
-                               web terminal (Linux user "dev")
-                                  tmux + Claude Code + your projects
+                              web studio (Linux user "dev")
+                                  Claude Agent SDK + Web UI + your projects
                                   no secrets, only placeholders
                                   │
            requests go to http://127.0.0.1:8787/...   (the gateway)
@@ -23,6 +26,16 @@ Works with a Claude API key or your Claude Pro/Max subscription.
                                   ▼
          gateway adds the real key ──▶ api.anthropic.com / github.com / ...
 ```
+
+## Features
+
+- 🤖 **Autonomous Claude Agent SDK:** Programmatic multi-turn loop with tool use (`Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`).
+- 🌐 **Modern Web UI:** Single-page dashboard to chat with the agent, inspect tools live, and control the development flow.
+- 📁 **Cloud Workspace & Projects:** Clone repos from GitHub or switch between projects in `/home/dev/projects`.
+- 🔍 **Live Diff Review:** Inspect all modified, untracked, and deleted files with unified syntax highlighting.
+- ✨ **AI Commit Message Generator:** Auto-generates clean, conventional commit messages from the actual diff.
+- 🚀 **1-Click Commit & Push:** Stages, commits, and pushes changes back to GitHub through the authenticated gateway proxy.
+- 💻 **Integrated Cloud Terminal:** Run arbitrary bash commands (`npm test`, `git log`, etc.) right from the browser.
 
 ## How the keys stay hidden
 
@@ -104,7 +117,8 @@ It logs you in to Railway and asks for your tokens. It can run
 `claude setup-token` for you, and checks each token before saving anything.
 Then it creates the project, service, variables, the `/home/dev` volume and a
 domain, connects this repo, deploys, waits until the box is up, and prints the
-URL and password.
+URL, login name and password. The login name defaults to `dev`; set
+`TERMINAL_USERNAME` (or answer the prompt) to choose another.
 
 - **Tokens stay off the screen:** they're typed hidden and sent to Railway via
   stdin, so they never appear in your shell history or process list.

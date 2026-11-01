@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Dev Studio • Railway</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <!-- Header -->
+  <header class="top-nav">
+    <div class="brand">
+      <div class="logo-icon">⚡</div>
+      <div class="brand-text">
+        <span class="title">Claude Dev Studio</span>
+        <span class="badge">Claude Agent SDK</span>
+      </div>
+    </div>
+
+    <div class="project-selector-wrapper">
+      <label for="projectSelect">Project:</label>
+      <select id="projectSelect" class="select-input">
+        <option value="" disabled selected>Loading projects...</option>
+      </select>
+      <button id="btnOpenCloneModal" class="btn btn-secondary btn-sm" title="Clone new repository">
+        + Clone Repo
+      </button>
+    </div>
+
+    <div class="nav-status">
+      <div id="gitBadge" class="git-badge" title="Git Branch & Status">
+        <span class="git-icon">🌿</span>
+        <span id="gitBranchText">no repo</span>
+        <span id="gitChangesBadge" class="changes-count hidden">0</span>
+      </div>
+
+      <button id="btnQuickReview" class="btn btn-secondary btn-sm" title="Review git diff">
+        Review Diff
+      </button>
+
+      <button id="btnQuickCommit" class="btn btn-primary btn-sm" title="Commit & push to GitHub">
+        Commit & Push
+      </button>
+
+      <div class="server-status" title="Railway Gateway Connected">
+        <span class="status-dot online"></span>
+        <span class="status-text">Cloud</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <main class="workspace-grid">
+    <!-- Left Pane: Agent Chat & Task Loop -->
+    <section class="agent-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="icon">🤖</span>
+          <h3>Autonomous Agent Console</h3>
+        </div>
+        <div class="panel-actions">
+          <span id="agentStatus" class="agent-status-badge idle">Ready</span>
+          <button id="btnClearChat" class="btn-icon" title="Clear console">🧹</button>
+        </div>
+      </div>
+
+      <!-- Messages Stream -->
+      <div id="chatStream" class="chat-stream">
+        <div class="welcome-card">
+          <h4>Welcome to your Cloud Development Studio</h4>
+          <p>This workspace is powered by <strong>@anthropic-ai/claude-agent-sdk</strong> running on <strong>Railway</strong>.</p>
+          <ul>
+            <li>Select or clone a GitHub repo using the selector above.</li>
+            <li>Give Claude an instruction (e.g. <em>"Implement authentication"</em> or <em>"Fix failing test"</em>).</li>
+            <li>Claude reads files, writes code, and runs commands autonomously.</li>
+            <li>Review changes in the Diff tab and push directly to GitHub!</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="prompt-container">
+        <!-- Quick Suggestions -->
+        <div class="prompt-chips">
+          <button class="chip" data-prompt="Analyze the project architecture and summarize key components.">📐 Architecture</button>
+          <button class="chip" data-prompt="Run tests and fix any failing or broken test cases.">🧪 Fix Tests</button>
+          <button class="chip" data-prompt="Scan for code quality, potential bugs, or performance bottlenecks.">🔍 Audit Code</button>
+          <button class="chip" data-prompt="Implement the next feature or pending TODO.">✨ Implement Feature</button>
+        </div>
+
+        <div class="input-row">
+          <textarea
+            id="promptInput"
+            class="prompt-textarea"
+            placeholder="Tell Claude what to do in this project... (Shift+Enter for newline)"
+            rows="2"
+          ></textarea>
+          <div class="input-actions">
+            <button id="btnSend" class="btn btn-primary" title="Execute Task (Enter)">
+              <span>Run Task</span>
+              <kbd class="key-shortcut">⏎</kbd>
+            </button>
+            <button id="btnStop" class="btn btn-danger hidden" title="Cancel Task">
+              <span>Stop</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Pane: Tabs for Git, Terminal, Repos -->
+    <aside class="inspect-panel">
+      <!-- Tabs Header -->
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="tabGit">
+          <span>Git & Push</span>
+          <span id="tabDiffCounter" class="tab-badge hidden">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tabTerminal">Terminal</button>
+        <button class="tab-btn" data-tab="tabProjects">Repositories</button>
+      </div>
+
+      <!-- Tab 1: Git & Changes (Commit/Push) -->
+      <div id="tabGit" class="tab-content active">
+        <div class="git-actions-bar">
+          <div class="git-info-text">
+            <strong>Active Changes:</strong>
+            <span id="gitFilesCount">0 files changed</span>
+          </div>
+          <button id="btnRefreshGit" class="btn btn-secondary btn-xs" title="Refresh Git Status">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Changed Files List -->
+        <div id="changedFilesList" class="changed-files-box">
+          <div class="empty-state">No uncommitted changes in this repository.</div>
+        </div>
+
+        <!-- Diff Viewer -->
+        <div class="diff-section">
+          <div class="diff-header">
+            <span>Unified Diff Preview</span>
+          </div>
+          <pre id="diffViewer" class="diff-viewer"><code>(clean working tree)</code></pre>
+        </div>
+
+        <!-- Commit & Push Box -->
+        <div class="commit-box">
+          <div class="commit-message-header">
+            <label for="commitMessageInput">Commit Message:</label>
+            <button id="btnAiCommit" class="btn btn-secondary btn-xs" title="Generate message from diff with Claude">
+              ✨ AI Generate
+            </button>
+          </div>
+          <input
+            id="commitMessageInput"
+            type="text"
+            class="text-input"
+            placeholder="e.g. feat(auth): add token validation"
+          />
+          <div class="push-actions">
+            <button id="btnCommitAndPush" class="btn btn-success btn-block">
+              🚀 Commit & Push to GitHub
+            </button>
+          </div>
+          <div id="pushLog" class="push-log hidden"></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Integrated Cloud Terminal -->
+      <div id="tabTerminal" class="tab-content">
+        <div class="terminal-quick-cmds">
+          <button class="chip" data-cmd="git status">git status</button>
+          <button class="chip" data-cmd="git log -n 5 --oneline">git log</button>
+          <button class="chip" data-cmd="ls -la">ls -la</button>
+          <button class="chip" data-cmd="npm test">npm test</button>
+        </div>
+        <div class="terminal-input-bar">
+          <span class="term-prompt">$</span>
+          <input id="termInput" type="text" class="term-input" placeholder="bash command (e.g. npm test, git diff)..." />
+          <button id="btnRunTerm" class="btn btn-secondary btn-sm">Run</button>
+        </div>
+        <pre id="termOutput" class="terminal-screen"><code>Cloud Terminal Ready. Enter a command above.</code></pre>
+      </div>
+
+      <!-- Tab 3: Repositories List & Management -->
+      <div id="tabProjects" class="tab-content">
+        <div class="projects-actions-bar">
+          <h4>Repositories in /home/dev/projects</h4>
+          <button id="btnOpenCloneModal2" class="btn btn-primary btn-xs">+ Clone Repo</button>
+        </div>
+        <div id="projectsList" class="projects-list">
+          <div class="empty-state">Loading repositories...</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal: Clone Repository -->
+  <div id="cloneModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Clone GitHub Repository</h3>
+        <button id="btnCloseCloneModal" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Enter a repository name or URL. The gateway automatically injects your <code>GITHUB_TOKEN</code> for authentication.
+        </p>
+        <div class="form-group">
+          <label for="cloneRepoInput">Repository (owner/repo or https://github.com/...):</label>
+          <input
+            id="cloneRepoInput"
+            type="text"
+            class="text-input"
+            placeholder="e.g. my-github-username/my-project"
+          />
+        </div>
+        <div class="form-group">
+          <label for="cloneBranchInput">Branch (optional):</label>
+          <input
+            id="cloneBranchInput"
+            type="text"
+            class="text-input"
+            placeholder="main"
+          />
+        </div>
+        <div id="cloneStatusMsg" class="form-status hidden"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelClone" class="btn btn-secondary">Cancel</button>
+        <button id="btnDoClone" class="btn btn-primary">Start Clone</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
