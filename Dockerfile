@@ -8,6 +8,7 @@ FROM ubuntu:24.04
 # Claude Code version to bake in. It can still update itself afterwards
 # (updates go into /home/dev, which lives on your Railway volume).
 ARG CLAUDE_CODE_VERSION=latest
+ARG OPENCODE_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8
@@ -30,9 +31,10 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
       ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack; fi \
  && node --version && npm --version
 
-RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" "opencode-ai@${OPENCODE_VERSION}" \
  && npm cache clean --force \
- && claude --version
+ && claude --version \
+ && opencode --version
 
 # Users:
 #   broker - runs the gateway and is the only user that can see secrets

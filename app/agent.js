@@ -104,6 +104,20 @@ export const PROVIDERS = {
     ],
     description: 'OpenAI Codex & reasoning models via OpenAI tool-calling loop',
   },
+  groq: {
+    id: 'groq',
+    name: 'Groq (Ultra-Fast Free Tier)',
+    badge: '100% Free',
+    icon: '⚡',
+    defaultModel: 'llama-3.3-70b-versatile',
+    models: [
+      { id: 'llama-3.3-70b-versatile', name: '⚡ Llama 3.3 70B [Free & 800 tok/s]' },
+      { id: 'qwen-2.5-coder-32b', name: '💻 Qwen 2.5 Coder 32B [Free & Ultra-Fast]' },
+      { id: 'deepseek-r1-distill-llama-70b', name: '🧠 DeepSeek R1 Distill 70B [Free Reasoning]' },
+      { id: 'llama-3.1-8b-instant', name: '🚀 Llama 3.1 8B Instant [Free & 1000 tok/s]' },
+    ],
+    description: 'Ultra-fast LPU inference (300-800 tok/s) with generous daily free limits from console.groq.com',
+  },
 };
 
 /**
@@ -286,6 +300,8 @@ export async function runAgentTask({
     endpoint = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8787/openai/v1';
   } else if (normProvider === 'opencode') {
     endpoint = process.env.OPENCODE_BASE_URL || 'http://127.0.0.1:8787/opencode/v1';
+  } else if (normProvider === 'groq') {
+    endpoint = process.env.GROQ_BASE_URL || 'http://127.0.0.1:8787/groq';
   } else if (normProvider === 'freebuff') {
     endpoint = process.env.FREEBUFF_BASE_URL || 'http://127.0.0.1:8787/freebuff/v1';
   } else {
@@ -708,6 +724,8 @@ export async function generateAiCommitMessage({
     endpoint = process.env.OPENAI_BASE_URL || 'http://127.0.0.1:8787/openai/v1';
   } else if (normProvider === 'opencode') {
     endpoint = process.env.OPENCODE_BASE_URL || 'http://127.0.0.1:8787/opencode/v1';
+  } else if (normProvider === 'groq') {
+    endpoint = process.env.GROQ_BASE_URL || 'http://127.0.0.1:8787/groq';
   } else if (normProvider === 'freebuff') {
     endpoint = process.env.FREEBUFF_BASE_URL || 'http://127.0.0.1:8787/freebuff/v1';
   } else {

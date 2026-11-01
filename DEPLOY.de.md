@@ -38,6 +38,7 @@ Du kannst einen oder mehrere Provider in den Railway Environment-Variablen hinte
 | **🟠 OpenCode** | OpenRouter Auto, Qwen 2.5 Coder 32B, Gemini 2.0 Flash Exp | `OPENCODE_API_KEY` (kostenloser OpenRouter Key) oder `OPENCODE_BASE_URL` (lokales Ollama) | **100% Kostenlose Modelle** (`:free` Pool & Ollama) |
 | **🎁 Freebuff** | Freebuff Auto, DeepSeek V3, GLM 4 | *(Kein Key nötig!)* oder `FREEBUFF_API_KEY` | **100% Kostenlos** (werbefinanziert) |
 | **🔵 Antigravity (Google)** | Gemini 2.0 Flash, Gemini Thinking, 1.5 Flash | `ANTIGRAVITY_API_KEY` *oder* `GEMINI_API_KEY` | **100% Kostenloses Kontingent** (1500 Anfragen/Tag bei Google AI Studio) |
+| **⚡ Groq** | Llama 3.3 70B, Qwen 2.5 Coder 32B | `GROQ_API_KEY` (kostenloser Key bei console.groq.com) | **100% Kostenlos** (Ultra-Fast 800 tok/s) |
 | **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` *oder* `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go / Pro-Abo |
 | **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` *oder* `CODEX_API_KEY` | OpenAI API Guthaben |
 

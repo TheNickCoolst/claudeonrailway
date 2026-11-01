@@ -56,6 +56,7 @@ they never appear in its environment, its files, or its context. Works with a Cl
 | **🟠 OpenCode** | OpenRouter Auto, Qwen 2.5 Coder 32B, Gemini 2.0 Flash Exp | `OPENCODE_API_KEY` or `OPENCODE_BASE_URL` | **100% Free** (`:free` Pool & local Ollama) |
 | **🎁 Freebuff** | Freebuff Auto, DeepSeek V3, GLM 4 | *(No key required)* or `FREEBUFF_API_KEY` | **100% Free** (Ad-Funded) |
 | **🔵 Antigravity** | Gemini 2.0 Flash, Gemini Thinking, 1.5 Flash | `ANTIGRAVITY_API_KEY` or `GEMINI_API_KEY` | **100% Free** (1500 req/day on Google AI Studio) |
+| **⚡ Groq** | Llama 3.3 70B, Qwen 2.5 Coder 32B | `GROQ_API_KEY` (free key at console.groq.com) | **100% Free** (Ultra-Fast 800 tok/s) |
 | **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go or Claude Pro/Max subscription |
 | **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` or `CODEX_API_KEY` | OpenAI API balance |
 

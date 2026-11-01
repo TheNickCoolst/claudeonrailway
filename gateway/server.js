@@ -183,6 +183,17 @@ function buildRoutes() {
     description: `Freebuff AI (${freebuffTarget})`,
   });
 
+  // Groq (Ultra-fast free inference for Llama 3.3 70B, Qwen 2.5 Coder & DeepSeek R1)
+  const groqKey = secret('GROQ_API_KEY');
+  routes.set('groq', {
+    target: parseTarget(env.GROQ_UPSTREAM || 'https://api.groq.com/openai/v1', 'groq'),
+    strip: new Set(['authorization']),
+    inject: groqKey ? { authorization: `Bearer ${groqKey}` } : {},
+    description: groqKey
+      ? 'Groq API (GROQ_API_KEY)'
+      : 'Groq API (key not configured)',
+  });
+
   // GitHub over git's HTTPS protocol (clone / fetch / push).
   // Only git endpoints are allowed, so the token can't be used for anything else on github.com.
   const githubToken = secret('GITHUB_TOKEN');
@@ -285,6 +296,10 @@ const ERROR_HINTS = {
   },
   freebuff: {
     429: 'Freebuff daily pool limit reached. Freebuff quota resets daily, or configure your own upstream proxy.',
+  },
+  groq: {
+    401: 'Groq API key rejected. Get a free key at console.groq.com and set GROQ_API_KEY in Railway variables.',
+    429: 'Groq rate limit reached (resets quickly per minute).',
   },
 };
 
