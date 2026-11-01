@@ -34,11 +34,12 @@ Du kannst einen oder mehrere Provider in den Railway Environment-Variablen hinte
 
 | Provider | Modell-Beispiele | Benötigte Railway-Variable | Kostenlos / Free Tier? |
 |---|---|---|---|
+| **🐙 GitHub Models** | GPT-4o, DeepSeek-R1, Llama 3.3 | Nutzt automatisch dein `GITHUB_TOKEN` | **100% Kostenlos** (GitHub Prototyping Tier) |
+| **🟠 OpenCode** | OpenRouter Auto, Qwen 2.5 Coder 32B, Gemini 2.0 Flash Exp | `OPENCODE_API_KEY` (kostenloser OpenRouter Key) oder `OPENCODE_BASE_URL` (lokales Ollama) | **100% Kostenlose Modelle** (`:free` Pool & Ollama) |
+| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3, GLM 4 | *(Kein Key nötig!)* oder `FREEBUFF_API_KEY` | **100% Kostenlos** (werbefinanziert) |
+| **🔵 Antigravity (Google)** | Gemini 2.0 Flash, Gemini Thinking, 1.5 Flash | `ANTIGRAVITY_API_KEY` *oder* `GEMINI_API_KEY` | **100% Kostenloses Kontingent** (1500 Anfragen/Tag bei Google AI Studio) |
 | **🟣 Claude** | Claude 3.7 Sonnet, 3.5 Sonnet | `ANTHROPIC_API_KEY` *oder* `CLAUDE_CODE_OAUTH_TOKEN` | Pay-as-you-go / Pro-Abo |
-| **🔵 Antigravity (Google)** | Gemini 2.5 Pro, 2.0 Flash | `ANTIGRAVITY_API_KEY` *oder* `GEMINI_API_KEY` | Kostenloses Kontingent bei Google AI Studio |
 | **🟢 Codex / OpenAI** | GPT-4o, o3-mini, o1 | `OPENAI_API_KEY` *oder* `CODEX_API_KEY` | OpenAI API Guthaben |
-| **🟠 OpenCode** | DeepSeek V3, Qwen 2.5 Coder | `OPENCODE_API_KEY` / `OPENROUTER_API_KEY` | OpenRouter / Ollama lokal |
-| **🎁 Freebuff** | Freebuff Auto, DeepSeek V3 | *(Kein Key nötig!)* oder `FREEBUFF_API_KEY` | **100% Kostenlos (Werbefinanziert)** |
 
 ---
 

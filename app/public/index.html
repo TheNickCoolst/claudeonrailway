@@ -33,10 +33,11 @@
       <label for="providerSelect">AI Engine:</label>
       <select id="providerSelect" class="select-input engine-select" title="Select AI Provider">
         <option value="claude">🟣 Claude (Anthropic)</option>
-        <option value="antigravity">🔵 Antigravity (Google / Gemini)</option>
+        <option value="github-models">🐙 GitHub Models (Free with GITHUB_TOKEN)</option>
+        <option value="opencode">🟠 OpenCode & OpenRouter Free Tier</option>
+        <option value="freebuff">🎁 Freebuff (100% Free Pool)</option>
+        <option value="antigravity">🔵 Antigravity (Google / Gemini Free Quota)</option>
         <option value="codex">🟢 Codex / OpenAI</option>
-        <option value="opencode">🟠 OpenCode</option>
-        <option value="freebuff">🎁 Freebuff (Free Tier)</option>
       </select>
       <select id="modelSelect" class="select-input model-select" title="Select Model">
         <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
@@ -87,11 +88,12 @@
           <h4>Welcome to your Multi-Provider Cloud Dev Studio</h4>
           <p>Work autonomously on your codebases in the cloud using your choice of AI engine:</p>
           <ul>
-            <li><strong>🟣 Claude (Anthropic):</strong> Claude Agent SDK & Anthropic SDK for autonomous tool execution.</li>
-            <li><strong>🔵 Antigravity (Google DeepMind):</strong> Gemini 2.5 Pro & 2.0 Flash with vast reasoning capability.</li>
-            <li><strong>🟢 Codex / OpenAI:</strong> GPT-4o, o3-mini & Codex reasoning.</li>
-            <li><strong>🟠 OpenCode:</strong> DeepSeek V3/R1, Qwen 2.5 Coder & open models.</li>
-            <li><strong>🎁 Freebuff (Free Tier):</strong> 100% free community ad-funded model pool without credit cards or subscriptions!</li>
+            <li><strong>🐙 GitHub Models (100% Free):</strong> GPT-4o, DeepSeek-R1 & Llama 3.3 using your existing GitHub Token!</li>
+            <li><strong>🟠 OpenCode & OpenRouter Free:</strong> Auto Free Tier, Qwen 2.5 Coder 32B, Gemini 2.0 Flash Exp & Mistral 24B!</li>
+            <li><strong>🎁 Freebuff (100% Free):</strong> Ad-funded free model pool (DeepSeek V3, GLM 4, GPT-4o Mini) without credit cards!</li>
+            <li><strong>🔵 Antigravity (Google / Gemini):</strong> 1500 free requests per day via Google AI Studio without credit card.</li>
+            <li><strong>🟣 Claude (Anthropic):</strong> Official Claude Agent SDK & Anthropic SDK.</li>
+            <li><strong>🟢 Codex / OpenAI:</strong> Flagship GPT-4o, o3-mini & reasoning models.</li>
           </ul>
           <p class="welcome-hint">Select a repository above, choose your preferred AI Engine, and give the agent a coding task.</p>
         </div>
