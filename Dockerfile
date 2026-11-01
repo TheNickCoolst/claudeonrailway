@@ -3,7 +3,7 @@
 
 FROM node:24-bookworm-slim AS node
 
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 # Claude Code version to bake in. It can still update itself afterwards
 # (updates go into /home/dev, which lives on your Railway volume).
