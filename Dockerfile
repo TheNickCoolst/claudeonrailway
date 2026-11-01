@@ -1,7 +1,7 @@
 # Claude Code dev environment for Railway.
 # See README.md for how it works and how to deploy.
 
-FROM node:24-bookworm-slim AS node
+FROM node:26-bookworm-slim AS node
 
 FROM ubuntu:24.04
 
